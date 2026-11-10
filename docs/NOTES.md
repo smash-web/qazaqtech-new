@@ -43,7 +43,7 @@
 
 ## Бесплатный режим ИИ для демо: Google Gemini
 - Если в окружении конвейера нет `ANTHROPIC_API_KEY`, но есть `GEMINI_API_KEY`, конвейер пишет статьи через Gemini (бесплатный тариф Google AI Studio).
-- Модели по умолчанию: написание `gemini-flash-latest`, проверка и отбор `gemini-flash-lite-latest` (переменные `GEMINI_WRITER_MODEL`, `GEMINI_QA_MODEL`, `GEMINI_SCORER_MODEL`).
+- Модели по умолчанию (через запятую — запасные на случай перегрузки 503): написание `gemini-3.5-flash,gemini-3.6-flash,gemini-3.5-flash-lite`, проверка и отбор `gemini-3.5-flash-lite,gemini-3.1-flash-lite`. Флагманы 3.8/3.6 Flash на бесплатном тарифе часто перегружены (переменные `GEMINI_WRITER_MODEL`, `GEMINI_QA_MODEL`, `GEMINI_SCORER_MODEL`).
 - Бесплатные лимиты малы (у Flash порядка десятков запросов в день), поэтому для демо: `MAX_ARTICLES_PER_RUN=2`, «Статей в день» ≈ 12. Между вызовами пауза 7 с.
 - На бесплатном тарифе Google может использовать запросы для улучшения своих продуктов — для публичных новостей это допустимо, для приватных данных нет.
 - Для боевого режима: добавить `ANTHROPIC_API_KEY` — конвейер сам переключится на Claude.

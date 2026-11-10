@@ -70,6 +70,10 @@ class AnthropicClient:
         raise LLMError("Исчерпаны попытки обращения к LLM")
 
 
+class _Overloaded(LLMError):
+    """Модель перегружена или недоступна — можно попробовать запасную."""
+
+
 class GeminiClient:
     """Google Gemini API (бесплатный тариф AI Studio подходит для демо).
 
@@ -91,6 +95,20 @@ class GeminiClient:
 
     def complete(self, *, model: str, system: str, prompt: str, max_tokens: int = 4000,
                  temperature: float = 0.4) -> str:
+        """model может быть списком через запятую: при перегрузке (503/429) берётся следующая модель."""
+        models = [m.strip() for m in model.split(",") if m.strip()]
+        last: LLMError | None = None
+        for i, m in enumerate(models):
+            try:
+                return self._complete_one(m, system, prompt, max_tokens, temperature,
+                                          retries=self.max_retries if i == len(models) - 1 else 2)
+            except _Overloaded as exc:
+                log.warning("Модель %s перегружена, пробуем следующую", m)
+                last = LLMError(str(exc))
+        raise last or LLMError("Нет доступных моделей Gemini")
+
+    def _complete_one(self, model: str, system: str, prompt: str, max_tokens: int, temperature: float,
+                      retries: int) -> str:
         body = {
             "systemInstruction": {"parts": [{"text": system}]},
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -100,7 +118,7 @@ class GeminiClient:
         }
         url = f"{self.base_url}/v1beta/models/{model}:generateContent"
         delay = 10.0
-        for attempt in range(1, self.max_retries + 1):
+        for attempt in range(1, retries + 1):
             wait = self.min_interval_s - (time.monotonic() - self._last_call)
             if wait > 0:
                 time.sleep(wait)
@@ -108,11 +126,13 @@ class GeminiClient:
             try:
                 resp = self.session.post(url, json=body, timeout=self.timeout)
             except requests.RequestException as exc:
-                if attempt == self.max_retries:
-                    raise LLMError(f"Сетевая ошибка Gemini: {exc}") from exc
+                if attempt == retries:
+                    raise _Overloaded(f"Сетевая ошибка Gemini: {exc}") from exc
                 time.sleep(delay)
                 continue
-            if resp.status_code in (429, 500, 503) and attempt < self.max_retries:
+            if resp.status_code in (429, 500, 503) and attempt == retries:
+                raise _Overloaded(f"Gemini HTTP {resp.status_code}: {resp.text[:200]}")
+            if resp.status_code in (429, 500, 503):
                 log.warning("Gemini %s, повтор через %.0f с", resp.status_code, delay)
                 time.sleep(delay)
                 delay *= 2
@@ -127,7 +147,7 @@ class GeminiClient:
                 raise LLMError("Ответ Gemini обрезан (MAX_TOKENS)")
             parts = (cands[0].get("content") or {}).get("parts") or []
             return "".join(p.get("text", "") for p in parts if not p.get("thought"))
-        raise LLMError("Исчерпаны попытки обращения к Gemini")
+        raise _Overloaded("Исчерпаны попытки обращения к Gemini")
 
 
 def extract_json(text: str) -> Any:

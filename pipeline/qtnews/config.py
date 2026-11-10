@@ -29,9 +29,9 @@ class Config:
     qa_model: str = field(default_factory=lambda: _env("QA_MODEL"))  # пусто = как writer_model
     # Google Gemini — бесплатный тариф для демо. Используется, если нет ключа Anthropic.
     gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY"))
-    gemini_writer_model: str = field(default_factory=lambda: _env("GEMINI_WRITER_MODEL", "gemini-flash-latest"))
-    gemini_qa_model: str = field(default_factory=lambda: _env("GEMINI_QA_MODEL", "gemini-flash-lite-latest"))
-    gemini_scorer_model: str = field(default_factory=lambda: _env("GEMINI_SCORER_MODEL", "gemini-flash-lite-latest"))
+    gemini_writer_model: str = field(default_factory=lambda: _env("GEMINI_WRITER_MODEL", "gemini-3.5-flash,gemini-3.6-flash,gemini-3.5-flash-lite"))
+    gemini_qa_model: str = field(default_factory=lambda: _env("GEMINI_QA_MODEL", "gemini-3.5-flash-lite,gemini-3.1-flash-lite"))
+    gemini_scorer_model: str = field(default_factory=lambda: _env("GEMINI_SCORER_MODEL", "gemini-3.5-flash-lite,gemini-3.1-flash-lite"))
     scorer_model: str = field(default_factory=lambda: _env("SCORER_MODEL", "claude-haiku-5-5"))
 
     # Расписание и лимиты

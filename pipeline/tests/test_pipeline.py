@@ -296,7 +296,31 @@ def test_provider_selection():
     from qtnews.main import make_llm
     from qtnews.llm import GeminiClient
     llm, cfg = make_llm(Config(anthropic_api_key="", gemini_api_key="g"))
-    assert isinstance(llm, GeminiClient) and cfg.writer_model == "gemini-flash-latest"
-    assert cfg.qa_model == "gemini-flash-lite-latest"
+    assert isinstance(llm, GeminiClient) and cfg.writer_model.startswith("gemini-3.5-flash,")
+    assert cfg.qa_model.startswith("gemini-3.5-flash-lite")
     llm, _ = make_llm(Config(anthropic_api_key="", gemini_api_key=""))
     assert llm is None
+
+
+def test_gemini_falls_back_to_next_model(monkeypatch):
+    from qtnews.llm import GeminiClient
+
+    class Resp:
+        def __init__(self, code, data):
+            self.status_code, self._d, self.text = code, data, str(data)
+
+        def json(self):
+            return self._d
+
+    urls = []
+    ok = Resp(200, {"candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "{}"}]}}]})
+
+    def post(url, json, timeout):
+        urls.append(url)
+        return Resp(503, {}) if "busy-model" in url else ok
+
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    c = GeminiClient("k", min_interval_s=0)
+    monkeypatch.setattr(c.session, "post", post)
+    assert c.complete(model="busy-model, spare-model", system="s", prompt="p") == "{}"
+    assert sum("busy-model" in u for u in urls) == 2 and urls[-1].endswith("spare-model:generateContent")
