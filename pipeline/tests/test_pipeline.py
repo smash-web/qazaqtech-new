@@ -457,5 +457,5 @@ def test_finder_uses_chooser_then_fallback(monkeypatch):
         return [ImageCandidate(f"File:{q}.jpg", f"https://c/{q}", "u", 1600, 900, "image/jpeg", "A", "CC0")]
 
     monkeypatch.setattr(f, "search", fake_search)
-    picked = f.find(["Anthropic logo"], "ai", set(), choose=lambda cands: None if "logo" in cands[0].title else cands[0])
+    picked = f.find(["Anthropic logo"], "ai", set(), choose=lambda cands, generic: None if "logo" in cands[0].title else cands[0])
     assert picked is not None and "logo" not in picked.title and calls[0] == "Anthropic logo"

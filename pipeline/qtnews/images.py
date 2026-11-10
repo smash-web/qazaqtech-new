@@ -179,15 +179,20 @@ class ImageFinder:
              choose=None) -> ImageCandidate | None:
         """Фото к статье: сначала по запросам ИИ, затем запасные по рубрике.
 
-        choose(candidates) -> кандидат | None — выбор фоторедактора (ИИ); без него берётся первый подходящий.
+        choose(candidates, generic) -> кандидат | None — выбор фоторедактора (ИИ); без него берётся первый.
+        Во втором (запасном) раунде годится нейтральная тематическая иллюстрация; если ИИ и там ничего
+        не выбрал, берём первый прошедший фильтры кандидат — фото у статьи должно быть.
         """
-        rounds = [[q for q in queries if q.strip()][:4],
-                  CATEGORY_FALLBACK.get(category or "", []) + DEFAULT_FALLBACK]
-        for plan in rounds:
+        rounds = [([q for q in queries if q.strip()][:4], False),
+                  (CATEGORY_FALLBACK.get(category or "", []) + DEFAULT_FALLBACK, True)]
+        for plan, generic in rounds:
             cands = self.candidates(plan, used_pages)
+            log.info("Фото: запросы %s → кандидатов %d", plan, len(cands))
             if not cands:
                 continue
-            pick = choose(cands) if choose else cands[0]
+            pick = choose(cands, generic) if choose else cands[0]
+            if pick is None and generic:
+                pick = cands[0]
             if pick is not None:
                 log.info("Фото: %s", pick.title)
                 return pick

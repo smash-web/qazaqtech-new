@@ -126,10 +126,12 @@ def photo_chooser(llm: LLM | None, model: str, title: str, context: str):
     if llm is None:
         return None
 
-    def choose(cands):
+    def choose(cands, generic=False):
         listing = "\n".join(f"{n}. {c.label} | категории: {c.categories[:160]} | описание: {c.description[:160]}"
                             for n, c in enumerate(cands, 1))
-        prompt = (f"Статья: {title}\n{context[:400]}\n\nКандидаты:\n{listing}\n\n"
+        note = ("\nТочного фото по теме нет — подойдёт нейтральная тематическая иллюстрация (техника, офис, "
+                "серверы и т.п.), лишь бы без людей и не противоречила теме.\n" if generic else "")
+        prompt = (f"Статья: {title}\n{context[:400]}\n{note}\nКандидаты:\n{listing}\n\n"
                   'Верни JSON: {"pick": <номер подходящего фото или null>, "why": "<коротко>"}')
         try:
             data = complete_json(llm, model=model, system=PHOTO_SYSTEM, prompt=prompt, max_tokens=300,
@@ -141,6 +143,8 @@ def photo_chooser(llm: LLM | None, model: str, title: str, context: str):
             n = int(data.get("pick")) if isinstance(data, dict) and data.get("pick") is not None else 0
         except (TypeError, ValueError):
             n = 0
+        log.info("Фоторедактор: выбор %s (%s)", n or "нет", str((data or {}).get("why", ""))[:200]
+                 if isinstance(data, dict) else "")
         return cands[n - 1] if 1 <= n <= len(cands) else None
 
     return choose
@@ -182,6 +186,7 @@ def backfill_covers(cfg: Config, cms: CMSClient, llm: LLM | None, images: ImageF
             except LLMError as exc:
                 log.warning("Запросы для фото не получены: %s", exc)
         queries = queries or [t for t in tags if t.isascii()][:3]
+        log.info("Статья %s без фото, запросы: %s", art["id"], queries)
         cat = art.get("category")
         cat_slug = cat.get("slug") if isinstance(cat, dict) else None
         media_id = find_cover(cms, images, queries, alt or art.get("title", ""), cat_slug,
