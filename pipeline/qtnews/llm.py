@@ -16,6 +16,33 @@ class LLMError(RuntimeError):
     pass
 
 
+class DeadlineExceeded(LLMError):
+    """До лимита времени запуска осталось слишком мало — новый запрос не начинаем."""
+
+
+class _Budget:
+    """Общий лимит времени запуска (функция Vercel живёт не дольше 300 с).
+
+    deadline — момент time.monotonic(), к которому все запросы должны завершиться; None — без лимита.
+    """
+
+    deadline: float | None = None
+
+    def remaining(self) -> float:
+        return float("inf") if self.deadline is None else self.deadline - time.monotonic()
+
+    def timeout(self, default: float) -> float:
+        left = self.remaining()
+        if left < 15:
+            raise DeadlineExceeded(f"До конца запуска {left:.0f} с — запрос к ИИ не начинаем")
+        return min(default, left - 5)
+
+    def sleep(self, seconds: float) -> None:
+        if self.remaining() < seconds + 20:
+            raise DeadlineExceeded("Не хватает времени на повтор запроса к ИИ")
+        time.sleep(seconds)
+
+
 class LLM(Protocol):
     def complete(self, *, model: str, system: str, prompt: str, max_tokens: int = 4000,
                  temperature: float = 0.4) -> str: ...
@@ -29,6 +56,7 @@ class AnthropicClient:
         self.base_url = base_url
         self.timeout = timeout
         self.max_retries = max_retries
+        self.budget = _Budget()
         self.session = requests.Session()
         self.session.headers.update({
             "x-api-key": api_key,
@@ -48,17 +76,18 @@ class AnthropicClient:
         delay = 2.0
         for attempt in range(1, self.max_retries + 1):
             try:
-                resp = self.session.post(f"{self.base_url}/v1/messages", json=body, timeout=self.timeout)
+                resp = self.session.post(f"{self.base_url}/v1/messages", json=body,
+                                         timeout=self.budget.timeout(self.timeout))
             except requests.RequestException as exc:
                 if attempt == self.max_retries:
                     raise LLMError(f"Сетевая ошибка LLM: {exc}") from exc
-                time.sleep(delay)
+                self.budget.sleep(delay)
                 delay *= 2
                 continue
             if resp.status_code in (429, 500, 502, 503, 529) and attempt < self.max_retries:
                 wait = float(resp.headers.get("retry-after", delay))
                 log.warning("LLM %s, повтор через %.0f с", resp.status_code, wait)
-                time.sleep(wait)
+                self.budget.sleep(wait)
                 delay *= 2
                 continue
             if resp.status_code >= 400:
@@ -90,6 +119,7 @@ class GeminiClient:
         self.max_retries = max_retries
         self.min_interval_s = min_interval_s
         self._last_call = 0.0
+        self.budget = _Budget()
         self.session = requests.Session()
         self.session.headers.update({"x-goog-api-key": api_key, "content-type": "application/json"})
 
@@ -121,20 +151,20 @@ class GeminiClient:
         for attempt in range(1, retries + 1):
             wait = self.min_interval_s - (time.monotonic() - self._last_call)
             if wait > 0:
-                time.sleep(wait)
+                self.budget.sleep(wait)
             self._last_call = time.monotonic()
             try:
-                resp = self.session.post(url, json=body, timeout=self.timeout)
+                resp = self.session.post(url, json=body, timeout=self.budget.timeout(self.timeout))
             except requests.RequestException as exc:
                 if attempt == retries:
                     raise _Overloaded(f"Сетевая ошибка Gemini: {exc}") from exc
-                time.sleep(delay)
+                self.budget.sleep(delay)
                 continue
             if resp.status_code in (429, 500, 503) and attempt == retries:
                 raise _Overloaded(f"Gemini HTTP {resp.status_code}: {resp.text[:200]}")
             if resp.status_code in (429, 500, 503):
                 log.warning("Gemini %s, повтор через %.0f с", resp.status_code, delay)
-                time.sleep(delay)
+                self.budget.sleep(delay)
                 delay *= 2
                 continue
             if resp.status_code >= 400:
@@ -170,6 +200,8 @@ def complete_json(llm: LLM, **kwargs: Any) -> Any:
     """complete() + разбор JSON, с одной повторной попыткой при битом JSON."""
     try:
         return extract_json(llm.complete(**kwargs))
+    except DeadlineExceeded:
+        raise
     except LLMError:
         kwargs["temperature"] = 0.0
         return extract_json(llm.complete(**kwargs))

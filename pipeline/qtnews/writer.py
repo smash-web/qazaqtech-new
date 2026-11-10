@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 
 from .db import Item
-from .llm import LLM, LLMError, complete_json
+from .llm import LLM, DeadlineExceeded, LLMError, complete_json
 
 log = logging.getLogger(__name__)
 
@@ -136,6 +136,8 @@ def write_article(llm: LLM, model: str, materials: list[SourceMaterial], *, glos
             fixed.image_queries = fixed.image_queries or draft.image_queries
             fixed.image_alt = fixed.image_alt or draft.image_alt
             return fixed
+    except DeadlineExceeded:
+        raise  # статья без проверки не выйдет; сюжет допишет следующий запуск
     except LLMError as exc:
         log.warning("QA-проход не удался: %s", exc)
     draft.qa_ok = False

@@ -48,17 +48,22 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
             return
         step = parse_qs(urlparse(self.path).query).get("step", ["both"])[0]
         started = time.time()
+        deadline = time.monotonic()  # уточняется после загрузки конфига
         result: dict = {"step": step}
         db = None
         try:
             cfg = load()
+            deadline += cfg.run_budget_seconds
             db, cms, llm, fetcher, cfg = build_with_cfg(cfg)
             if step in ("both", "collect"):
                 result["collect"] = collect(cfg, db, cms, fetcher)
             if step in ("both", "process"):
-                result["process"] = process(cfg, db, cms, llm, fetcher, make_images(cfg))
+                result["process"] = process(cfg, db, cms, llm, fetcher, make_images(cfg), deadline=deadline)
             if step == "covers":
-                result["covers"] = backfill_covers(cfg, cms, llm, make_images(cfg), cms.used_image_pages(), limit=8)
+                if getattr(llm, "budget", None) is not None:
+                    llm.budget.deadline = deadline
+                result["covers"] = backfill_covers(cfg, cms, llm, make_images(cfg), cms.used_image_pages(),
+                                                   limit=8, deadline=deadline)
             result["seconds"] = round(time.time() - started, 1)
             self._send(200, result)
         except Exception as exc:  # noqa: BLE001

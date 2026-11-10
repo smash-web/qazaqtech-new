@@ -25,7 +25,7 @@ from .db import Database
 from .feeds import Fetcher
 from .images import ImageFinder, filename_for
 from .lexical import markdown_to_lexical
-from .llm import AnthropicClient, GeminiClient, LLM, LLMError, complete_json
+from .llm import AnthropicClient, DeadlineExceeded, GeminiClient, LLM, LLMError, complete_json
 from .scoring import score_stories
 from .selection import select_for_run
 from .slug import slugify
@@ -168,12 +168,19 @@ def find_cover(cms: CMSClient, images: ImageFinder, queries: list[str], alt: str
     return media.get("id")
 
 
+def _left(deadline: float | None) -> float:
+    return float("inf") if deadline is None else deadline - time.monotonic()
+
+
 def backfill_covers(cfg: Config, cms: CMSClient, llm: LLM | None, images: ImageFinder,
-                    used: set[str], limit: int = 4) -> dict:
+                    used: set[str], limit: int = 4, deadline: float | None = None) -> dict:
     """Догоняет статьи без фото: ставит обложку; отложенные из-за фото — публикует."""
     stats = {"checked": 0, "covered": 0, "released": 0}
     for art in cms.articles_without_cover(limit=limit * 3):
         if stats["checked"] >= limit:
+            break
+        if _left(deadline) < cfg.cover_seconds:
+            stats["stopped_by_time"] = True
             break
         held = art.get("status") == "review" and NO_IMAGE_NOTE in (art.get("qaNotes") or "")
         if art.get("status") != "published" and not held:
@@ -210,7 +217,15 @@ def backfill_covers(cfg: Config, cms: CMSClient, llm: LLM | None, images: ImageF
 
 # --- этап 2: обработка ----------------------------------------------------------------------------
 def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher: Fetcher | None,
-            images: ImageFinder | None = None) -> dict:
+            images: ImageFinder | None = None, deadline: float | None = None) -> dict:
+    """deadline — момент time.monotonic(), к которому запуск должен закончиться (лимит функции Vercel).
+
+    Новую статью начинаем, только если до него осталось не меньше cfg.article_seconds; запросы к ИИ
+    сами прерываются у края лимита, а недописанный сюжет остаётся в очереди на следующий запуск.
+    """
+    budget = getattr(llm, "budget", None)
+    if budget is not None:
+        budget.deadline = deadline
     settings = cms.settings()
     if not settings.pipeline_enabled:
         log.info("Конвейер выключен в админке")
@@ -222,7 +237,7 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
     if images is not None:
         try:
             used_images = cms.used_image_pages()
-            stats["covers"] = backfill_covers(cfg, cms, llm, images, used_images)
+            stats["covers"] = backfill_covers(cfg, cms, llm, images, used_images, deadline=deadline)
         except (CMSError, LLMError) as exc:
             log.warning("Догонка обложек не удалась: %s", exc)
     stats["cluster"] = cluster_new_items(db, since, cfg.cluster_threshold)
@@ -242,6 +257,10 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
     cat_ids = {c["slug"]: c["id"] for c in categories}
     published = review = failed = duplicates = 0
     for story in chosen:
+        if _left(deadline) < cfg.article_seconds:
+            stats["stopped_by_time"] = True
+            log.info("До лимита запуска %.0f с — сюжет %s перенесён на следующий запуск", _left(deadline), story.id)
+            break
         try:
             if cms.find_article_by_story(story.id):  # идемпотентность при повторном запуске
                 with db.tx():
@@ -303,6 +322,11 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
             published += go_live
             review += not go_live
             log.info("Статья %s: %s (%s)", "опубликована" if go_live else "на модерации", draft.title, doc.get("id"))
+        except DeadlineExceeded as exc:
+            # Не ошибка сюжета: время запуска вышло. Сюжет остаётся SELECTED и будет взят следующим запуском.
+            stats["stopped_by_time"] = True
+            log.warning("Сюжет %s не успели дописать: %s", story.id, exc)
+            break
         except (LLMError, CMSError) as exc:
             failed += 1
             log.error("Сюжет %s не обработан: %s", story.id, exc)

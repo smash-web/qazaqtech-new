@@ -459,3 +459,40 @@ def test_finder_uses_chooser_then_fallback(monkeypatch):
     monkeypatch.setattr(f, "search", fake_search)
     picked = f.find(["Anthropic logo"], "ai", set(), choose=lambda cands, generic: None if "logo" in cands[0].title else cands[0])
     assert picked is not None and "logo" not in picked.title and calls[0] == "Anthropic logo"
+
+
+# --- лимит времени запуска ------------------------------------------------------------------
+import time as _time  # noqa: E402
+
+from qtnews.llm import DeadlineExceeded, _Budget  # noqa: E402
+
+
+def test_budget_refuses_late_requests():
+    b = _Budget()
+    assert b.timeout(75) == 75
+    b.deadline = _time.monotonic() + 40
+    assert b.timeout(75) <= 35
+    with pytest.raises(DeadlineExceeded):
+        b.sleep(30)
+    b.deadline = _time.monotonic() + 5
+    with pytest.raises(DeadlineExceeded):
+        b.timeout(75)
+
+
+def test_no_new_article_close_to_deadline(db):
+    cms = MediaCMS(True)
+    llm = _story_with_llm(db)
+    stats = process(Config(database_url="sqlite:///:memory:"), db, cms, llm, None,
+                    deadline=_time.monotonic() + 60)
+    assert stats["selected"] == 1 and stats.get("stopped_by_time") and not cms.created
+    story = db.stories_by_status([dbm.SELECTED], "0")[0]
+    assert story.attempts == 0  # сюжет ждёт следующего запуска, не считается ошибкой
+
+
+def test_deadline_during_writing_keeps_story(db):
+    cms = MediaCMS(True)
+    llm = _story_with_llm(db)
+    llm.responses[1] = lambda kw: (_ for _ in ()).throw(DeadlineExceeded("время вышло"))
+    stats = process(Config(database_url="sqlite:///:memory:"), db, cms, llm, None)
+    assert stats.get("stopped_by_time") and stats["failed"] == 0 and not cms.created
+    assert db.stories_by_status([dbm.SELECTED], "0")[0].attempts == 0
