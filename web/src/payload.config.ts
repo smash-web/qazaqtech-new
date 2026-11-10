@@ -5,6 +5,7 @@ import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { en } from '@payloadcms/translations/languages/en'
 import { ru } from '@payloadcms/translations/languages/ru'
+import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
 import sharp from 'sharp'
 
 import { Articles } from './collections/Articles'
@@ -34,6 +35,17 @@ export default buildConfig({
     // В dev схема синхронизируется автоматически; в проде — только миграции (npm run payload migrate)
     push: process.env.NODE_ENV !== 'production',
   }),
+  plugins: [
+    // Медиафайлы — в Vercel Blob (файловая система Vercel только для чтения).
+    // Без токена (локальная разработка, Docker) файлы сохраняются в папку media/.
+    vercelBlobStorage({
+      enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+      token: process.env.BLOB_READ_WRITE_TOKEN || '',
+      collections: { media: true },
+      clientUploads: true, // загрузка из браузера напрямую в Blob, минуя лимит 4.5 МБ функций
+      addRandomSuffix: true,
+    }),
+  ],
   i18n: { supportedLanguages: { ru, en }, fallbackLanguage: 'ru' },
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   cors: [siteURL],

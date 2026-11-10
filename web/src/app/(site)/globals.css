@@ -35,7 +35,7 @@ img { max-width: 100%; display: block; }
 .meta { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 .tag { background: var(--accent-soft); color: var(--accent); padding: 2px 8px; border-radius: 999px; font-weight: 600; font-size: 12px; }
 .tag--muted { background: transparent; color: var(--muted); border: 1px solid var(--line); margin-right: 6px; }
-.card__media img { aspect-ratio: 16 / 9; object-fit: cover; width: 100%; border-radius: var(--radius); }
+.card__media img { aspect-ratio: 16 / 9; object-fit: cover; width: 100%; height: auto; border-radius: var(--radius); background: var(--line); }
 .card__body { padding-top: 10px; }
 .card__title { margin: 0; font-size: 18px; line-height: 1.35; }
 .card__excerpt { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
@@ -59,7 +59,7 @@ img { max-width: 100%; display: block; }
 .article__title { font-size: 36px; line-height: 1.2; letter-spacing: -0.015em; margin: 6px 0 12px; }
 .article__lead { font-size: 20px; color: var(--muted); margin: 0 0 20px; }
 .article__cover { margin: 0 0 24px; }
-.article__cover img { border-radius: var(--radius); width: 100%; }
+.article__cover img { border-radius: var(--radius); width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
 .article__cover figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .prose { font-size: 18px; line-height: 1.75; }
 .prose h2 { font-size: 24px; margin: 32px 0 8px; }

@@ -5,7 +5,8 @@ import { RichText } from '@payloadcms/richtext-lexical/react'
 import { ArticleCard } from '@/components/ArticleCard'
 import { articleBySlug, latestArticles } from '@/lib/cms'
 import { formatDate, SITE } from '@/lib/site'
-import { asCategory, asMedia } from '@/lib/types'
+import { coverOf } from '@/lib/cover'
+import { asCategory } from '@/lib/types'
 
 
 type Props = { params: Promise<{ slug: string }> }
@@ -13,7 +14,7 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const a = await articleBySlug((await params).slug)
   if (!a) return {}
-  const img = asMedia(a.coverImage)
+  const og = coverOf(a, 'og')
   const description = a.meta?.description || a.excerpt || undefined
   return {
     title: a.meta?.title || a.title,
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: `/zhanalyq/${a.slug}` },
     openGraph: {
       type: 'article', title: a.title, description, publishedTime: a.publishedAt || undefined,
-      images: img?.sizes?.og?.url ? [img.sizes.og.url] : undefined,
+      images: [{ url: og.src, width: 1200, height: og.generated ? 675 : 630, alt: a.title }],
     },
   }
 }
@@ -30,7 +31,7 @@ export default async function ArticlePage({ params }: Props) {
   const article = await articleBySlug((await params).slug)
   if (!article) notFound()
   const cat = asCategory(article.category)
-  const img = asMedia(article.coverImage)
+  const cover = coverOf(article, 'hero')
   const related = cat ? (await latestArticles({ category: cat.id, limit: 4, exclude: [article.id] })).docs : []
 
   const jsonLd = {
@@ -42,7 +43,7 @@ export default async function ArticlePage({ params }: Props) {
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
     mainEntityOfPage: `${SITE.url}/zhanalyq/${article.slug}`,
-    image: img?.url ? [img.url] : undefined,
+    image: [new URL(cover.src, SITE.url).toString()],
     publisher: { '@type': 'Organization', name: SITE.name },
     isBasedOn: article.sources?.map((s) => s.url),
   }
@@ -56,13 +57,11 @@ export default async function ArticlePage({ params }: Props) {
       </div>
       <h1 className="article__title">{article.title}</h1>
       {article.excerpt && <p className="article__lead">{article.excerpt}</p>}
-      {img?.url && (
-        <figure className="article__cover">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={img.sizes?.hero?.url || img.url} alt={img.alt || ''} />
-          {img.credit && <figcaption>{img.credit}</figcaption>}
-        </figure>
-      )}
+      <figure className="article__cover">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={cover.src} alt={cover.alt} width={1200} height={675} fetchPriority="high" />
+        {cover.credit && <figcaption>{cover.credit}</figcaption>}
+      </figure>
       <div className="prose">
         <RichText data={article.content as never} />
       </div>

@@ -1,17 +1,17 @@
 import Link from 'next/link'
 import { formatDate } from '@/lib/site'
-import { asCategory, asMedia, type ArticleDoc } from '@/lib/types'
+import { coverOf } from '@/lib/cover'
+import { asCategory, type ArticleDoc } from '@/lib/types'
 
 export function ArticleCard({ article, variant = 'default' }: { article: ArticleDoc; variant?: 'default' | 'hero' | 'compact' }) {
   const cat = asCategory(article.category)
-  const img = asMedia(article.coverImage)
-  const src = img?.sizes?.[variant === 'hero' ? 'hero' : 'card']?.url || img?.url
+  const cover = coverOf(article, variant === 'hero' ? 'hero' : 'card')
   return (
     <article className={`card card--${variant}`}>
-      {src && variant !== 'compact' && (
+      {variant !== 'compact' && (
         <Link href={`/zhanalyq/${article.slug}`} className="card__media" tabIndex={-1}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={img?.alt || ''} loading={variant === 'hero' ? 'eager' : 'lazy'} />
+          <img src={cover.src} alt={cover.alt} width={1200} height={675} loading={variant === 'hero' ? 'eager' : 'lazy'} />
         </Link>
       )}
       <div className="card__body">
