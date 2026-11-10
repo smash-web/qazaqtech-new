@@ -1,0 +1,44 @@
+# Резервный способ запуска конвейера вручную (основной — Vercel-функция pipeline/api/run.py по расписанию pg_cron).
+# Секреты репозитория: PIPELINE_DATABASE_URL, CMS_URL, CMS_API_KEY; позже — ANTHROPIC_API_KEY.
+name: pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "collect | process | both"
+        default: both
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: pipeline
+    env:
+      PIPELINE_DATABASE_URL: ${{ secrets.PIPELINE_DATABASE_URL }}
+      PIPELINE_DB_SCHEMA: pipeline
+      CMS_URL: ${{ secrets.CMS_URL }}
+      CMS_API_KEY: ${{ secrets.CMS_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SITE_TIMEZONE: Asia/Almaty
+      PROCESS_INTERVAL_MIN: "30"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: collect
+        if: inputs.command != 'process'
+        run: python -m qtnews.main collect
+      - name: process
+        if: inputs.command != 'collect'
+        run: python -m qtnews.main process

@@ -1,0 +1,56 @@
+# Продакшен-окружение: PostgreSQL + сайт/админка + конвейер новостей.
+# Запуск: docker compose up -d --build   (перед этим заполните .env по образцу .env.example)
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-qtnews}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
+      POSTGRES_DB: cms
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/create-pipeline-db.sql:/docker-entrypoint-initdb.d/10-pipeline.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qtnews} -d cms"]
+      interval: 5s
+      retries: 20
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+        NEXT_PUBLIC_SITE_NAME: ${SITE_NAME:-QazaqTech}
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URI: postgres://${POSTGRES_USER:-qtnews}:${POSTGRES_PASSWORD}@db:5432/cms
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?задайте PAYLOAD_SECRET в .env}
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL}
+      NEXT_PUBLIC_SITE_NAME: ${SITE_NAME:-QazaqTech}
+    volumes:
+      - media:/app/media
+    ports:
+      - "127.0.0.1:3000:3000"   # наружу — через reverse-proxy (Caddy/Nginx) с HTTPS
+
+  pipeline:
+    build: ./pipeline
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+      web: { condition: service_started }
+    environment:
+      PIPELINE_DATABASE_URL: postgresql://${POSTGRES_USER:-qtnews}:${POSTGRES_PASSWORD}@db:5432/pipeline
+      CMS_URL: http://web:3000
+      CMS_API_KEY: ${CMS_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      WRITER_MODEL: ${WRITER_MODEL:-claude-sonnet-5-5}
+      SCORER_MODEL: ${SCORER_MODEL:-claude-haiku-5-5}
+      SITE_TIMEZONE: ${SITE_TIMEZONE:-Asia/Almaty}
+      USER_AGENT: ${BOT_USER_AGENT:-QazaqTechNewsBot/1.0}
+
+volumes:
+  pgdata:
+  media:

@@ -1,0 +1,33 @@
+# Разовая (или повторяемая) инициализация CMS: схема БД + рубрики, источники, глоссарий, админ и бот.
+# Запуск вручную: Actions → bootstrap → Run workflow.
+# Секреты: DATABASE_URI, PAYLOAD_SECRET, CMS_API_KEY, ADMIN_EMAIL, ADMIN_PASSWORD.
+name: bootstrap
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    env:
+      # Режим development: Payload синхронизирует схему БД (для тестового этапа; в проде — миграции)
+      NODE_ENV: development
+      DATABASE_URI: ${{ secrets.DATABASE_URI }}
+      PAYLOAD_DB_SCHEMA: cms
+      PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+      CMS_API_KEY: ${{ secrets.CMS_API_KEY }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx payload generate:importmap
+      - run: npm run seed

@@ -1,0 +1,11 @@
+# Только база для локальной разработки: docker compose -f docker-compose.dev.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: qtnews, POSTGRES_PASSWORD: qtnews, POSTGRES_DB: cms }
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+      - ./infra/create-pipeline-db.sql:/docker-entrypoint-initdb.d/10-pipeline.sql:ro
+volumes:
+  pgdata-dev:
