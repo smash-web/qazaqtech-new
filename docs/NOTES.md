@@ -22,6 +22,8 @@
 - Конвейер: проект Vercel `qazaqtech-pipeline`, корень `pipeline/`, функция `/api/run`. Запуск по расписанию через pg_cron + pg_net в Supabase (каждые 30 мин).
 - База: Supabase `qazaqtech-news` (eu-central-1), роль `qtnews`, схемы `cms` (Payload) и `pipeline`. Сайт ходит через transaction pooler (6543), конвейер через session pooler (5432).
 - Схема CMS и стартовые данные созданы командой `npm run seed` при `NODE_ENV=development`.
+- **Обновление схемы БД после изменения коллекций или плагинов:** `cd web && NODE_ENV=development BLOB_READ_WRITE_TOKEN=<любой> DATABASE_URI=<session pooler 5432> PAYLOAD_DB_SCHEMA=cms npx tsx src/seed.ts`. Токен Blob нужен, иначе плагин хранилища отключён и его поля (`_objectKey`) не попадут в схему. Перед боевым запуском перейти на миграции.
+- Медиа: Vercel Blob `qazaqtech-media` (fra1). Фото к тестовым статьям взяты с Wikimedia Commons (CC BY-SA 4.0 / общественное достояние), автор и лицензия указаны в поле «Автор / лицензия».
 - Версии: Payload 3.93 требует Next.js 15.4.11+ (или 16.3.3+), поэтому `next` закреплён на `~15.4.11`.
 - VentureBeat отвечает 429 на запросы бота. Business Insider переключён на ленту feedburner (весь BI, не только tech).
 
