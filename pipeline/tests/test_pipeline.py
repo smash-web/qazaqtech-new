@@ -262,3 +262,41 @@ def test_promo_titles_are_skipped(db):
     out = score_stories(db, None, "m", "0", [])
     assert out["skipped_junk"] == 1
     assert [s.title for s in db.stories_by_status([dbm.SCORED], "0")] == ["Nvidia unveils new data center GPU for AI training"]
+
+
+def test_gemini_client_parses_and_retries(monkeypatch):
+    from qtnews.llm import GeminiClient
+
+    calls = []
+
+    class Resp:
+        def __init__(self, code, data):
+            self.status_code, self._d, self.text = code, data, str(data)
+
+        def json(self):
+            return self._d
+
+    seq = [Resp(429, {}), Resp(200, {"candidates": [{"finishReason": "STOP", "content": {"parts": [
+        {"text": "думаю...", "thought": True}, {"text": '{"ok": true}'}]}}]})]
+
+    def post(url, json, timeout):
+        calls.append((url, json))
+        return seq.pop(0)
+
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    c = GeminiClient("k", min_interval_s=0)
+    monkeypatch.setattr(c.session, "post", post)
+    out = c.complete(model="gemini-flash-latest", system="sys", prompt="hi")
+    assert out == '{"ok": true}' and len(calls) == 2
+    assert calls[0][0].endswith("/models/gemini-flash-latest:generateContent")
+    assert calls[0][1]["systemInstruction"]["parts"][0]["text"] == "sys"
+
+
+def test_provider_selection():
+    from qtnews.main import make_llm
+    from qtnews.llm import GeminiClient
+    llm, cfg = make_llm(Config(anthropic_api_key="", gemini_api_key="g"))
+    assert isinstance(llm, GeminiClient) and cfg.writer_model == "gemini-flash-latest"
+    assert cfg.qa_model == "gemini-flash-lite-latest"
+    llm, _ = make_llm(Config(anthropic_api_key="", gemini_api_key=""))
+    assert llm is None

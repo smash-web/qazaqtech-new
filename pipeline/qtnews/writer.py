@@ -101,7 +101,8 @@ def materials_from_items(items: list[Item], max_sources: int = 5) -> list[Source
 
 
 def write_article(llm: LLM, model: str, materials: list[SourceMaterial], *, glossary: list[dict],
-                  categories: list[dict], style_guide: str, suggested_category: str | None) -> Draft:
+                  categories: list[dict], style_guide: str, suggested_category: str | None,
+                  qa_model: str | None = None) -> Draft:
     cats = ", ".join(c["slug"] for c in categories)
     prompt = (
         f"Стилевой гайд редакции:\n{style_guide or '(нет)'}\n\n"
@@ -121,7 +122,7 @@ def write_article(llm: LLM, model: str, materials: list[SourceMaterial], *, glos
         f'"article": {ARTICLE_SCHEMA}}}'
     )
     try:
-        qa = complete_json(llm, model=model, system=QA_SYSTEM, prompt=qa_prompt, max_tokens=4500, temperature=0.1)
+        qa = complete_json(llm, model=qa_model or model, system=QA_SYSTEM, prompt=qa_prompt, max_tokens=4500, temperature=0.1)
         if isinstance(qa, dict) and isinstance(qa.get("article"), dict):
             fixed = _to_draft(qa["article"], materials, categories, draft.category)
             fixed.qa_ok = bool(qa.get("ok", False))

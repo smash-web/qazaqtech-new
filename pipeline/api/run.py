@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from qtnews.config import load  # noqa: E402
-from qtnews.main import build, collect, process  # noqa: E402
+from qtnews.main import build_with_cfg, collect, process  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -52,7 +52,7 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
         db = None
         try:
             cfg = load()
-            db, cms, llm, fetcher = build(cfg)
+            db, cms, llm, fetcher, cfg = build_with_cfg(cfg)
             if step in ("both", "collect"):
                 result["collect"] = collect(cfg, db, cms, fetcher)
             if step in ("both", "process"):

@@ -70,6 +70,66 @@ class AnthropicClient:
         raise LLMError("Исчерпаны попытки обращения к LLM")
 
 
+class GeminiClient:
+    """Google Gemini API (бесплатный тариф AI Studio подходит для демо).
+
+    Бесплатный тариф ограничен по запросам в минуту и в день, поэтому между вызовами
+    выдерживается пауза, а на 429 — повтор с ожиданием.
+    """
+
+    def __init__(self, api_key: str, base_url: str = "https://generativelanguage.googleapis.com", timeout: int = 120,
+                 max_retries: int = 4, min_interval_s: float = 7.0):
+        if not api_key:
+            raise LLMError("GEMINI_API_KEY не задан")
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.min_interval_s = min_interval_s
+        self._last_call = 0.0
+        self.session = requests.Session()
+        self.session.headers.update({"x-goog-api-key": api_key, "content-type": "application/json"})
+
+    def complete(self, *, model: str, system: str, prompt: str, max_tokens: int = 4000,
+                 temperature: float = 0.4) -> str:
+        body = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            # запас на «размышления» моделей Flash, иначе ответ обрезается
+            "generationConfig": {"maxOutputTokens": max(max_tokens * 2, 8192), "temperature": temperature,
+                                 "responseMimeType": "application/json"},
+        }
+        url = f"{self.base_url}/v1beta/models/{model}:generateContent"
+        delay = 10.0
+        for attempt in range(1, self.max_retries + 1):
+            wait = self.min_interval_s - (time.monotonic() - self._last_call)
+            if wait > 0:
+                time.sleep(wait)
+            self._last_call = time.monotonic()
+            try:
+                resp = self.session.post(url, json=body, timeout=self.timeout)
+            except requests.RequestException as exc:
+                if attempt == self.max_retries:
+                    raise LLMError(f"Сетевая ошибка Gemini: {exc}") from exc
+                time.sleep(delay)
+                continue
+            if resp.status_code in (429, 500, 503) and attempt < self.max_retries:
+                log.warning("Gemini %s, повтор через %.0f с", resp.status_code, delay)
+                time.sleep(delay)
+                delay *= 2
+                continue
+            if resp.status_code >= 400:
+                raise LLMError(f"Gemini HTTP {resp.status_code}: {resp.text[:400]}")
+            data = resp.json()
+            cands = data.get("candidates") or []
+            if not cands:
+                raise LLMError(f"Gemini без ответа: {str(data.get('promptFeedback'))[:300]}")
+            if cands[0].get("finishReason") == "MAX_TOKENS":
+                raise LLMError("Ответ Gemini обрезан (MAX_TOKENS)")
+            parts = (cands[0].get("content") or {}).get("parts") or []
+            return "".join(p.get("text", "") for p in parts if not p.get("thought"))
+        raise LLMError("Исчерпаны попытки обращения к Gemini")
+
+
 def extract_json(text: str) -> Any:
     """Достаёт JSON из ответа модели (допускает обёртку ```json ... ```)."""
     fenced = re.search(r"```(?:json)?\s*(.+?)```", text, re.S)

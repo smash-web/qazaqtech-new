@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import logging
 import signal
 import sys
@@ -22,7 +23,7 @@ from .config import Config, load
 from .db import Database
 from .feeds import Fetcher
 from .lexical import markdown_to_lexical
-from .llm import AnthropicClient, LLM, LLMError
+from .llm import AnthropicClient, GeminiClient, LLM, LLMError
 from .scoring import score_stories
 from .selection import select_for_run
 from .slug import slugify
@@ -113,7 +114,8 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
                 go_live = False
             else:
                 draft = write_article(llm, cfg.writer_model, materials, glossary=glossary, categories=categories,
-                                      style_guide=settings.style_guide, suggested_category=story.category)
+                                      style_guide=settings.style_guide, suggested_category=story.category,
+                                      qa_model=cfg.qa_model or None)
                 go_live = settings.auto_publish and draft.qa_ok
             slug = slugify(draft.title)
             if cms.slug_exists(slug):
@@ -153,18 +155,36 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
 
 
 # --- запуск ---------------------------------------------------------------------------------------
+def make_llm(cfg: Config) -> tuple[LLM | None, Config]:
+    """Выбор ИИ-провайдера: Claude (если есть ключ), иначе бесплатный Gemini, иначе режим без ИИ."""
+    if cfg.anthropic_api_key:
+        return AnthropicClient(cfg.anthropic_api_key, cfg.anthropic_base_url), cfg
+    if cfg.gemini_api_key:
+        log.info("ИИ-провайдер: Google Gemini (%s / %s / %s)", cfg.gemini_writer_model, cfg.gemini_qa_model,
+                 cfg.gemini_scorer_model)
+        return GeminiClient(cfg.gemini_api_key), replace(
+            cfg, writer_model=cfg.gemini_writer_model, qa_model=cfg.gemini_qa_model,
+            scorer_model=cfg.gemini_scorer_model)
+    log.warning("Нет ключа ИИ — режим без ИИ: черновики с исходниками уходят на модерацию")
+    return None, cfg
+
+
 def build(cfg: Config) -> tuple[Database, CMSClient, LLM | None, Fetcher]:
+    """Внимание: модели выбранного провайдера возвращаются через cfg — используйте build_with_cfg."""
+    db, cms, llm, fetcher, _ = build_with_cfg(cfg)
+    return db, cms, llm, fetcher
+
+
+def build_with_cfg(cfg: Config) -> tuple[Database, CMSClient, LLM | None, Fetcher, Config]:
     db = Database(cfg.database_url)
     db.init_schema()
     cms = CMSClient(cfg.cms_url, cfg.cms_api_key, cfg.cms_user_collection)
-    llm = AnthropicClient(cfg.anthropic_api_key, cfg.anthropic_base_url) if cfg.anthropic_api_key else None
-    if llm is None:
-        log.warning("ANTHROPIC_API_KEY не задан — режим без ИИ: черновики с исходниками уходят на модерацию")
-    return db, cms, llm, Fetcher(cfg.user_agent)
+    llm, cfg = make_llm(cfg)
+    return db, cms, llm, Fetcher(cfg.user_agent), cfg
 
 
 def run_forever(cfg: Config) -> None:
-    db, cms, llm, fetcher = build(cfg)
+    db, cms, llm, fetcher, cfg = build_with_cfg(cfg)
     stop = {"flag": False}
     signal.signal(signal.SIGTERM, lambda *_: stop.update(flag=True))
     next_collect = next_process = 0.0
@@ -193,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run":
         run_forever(cfg)
         return 0
-    db, cms, llm, fetcher = build(cfg)
+    db, cms, llm, fetcher, cfg = build_with_cfg(cfg)
     if args.command == "collect":
         collect(cfg, db, cms, fetcher)
     elif args.command == "process":

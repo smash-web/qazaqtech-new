@@ -26,6 +26,12 @@ class Config:
     anthropic_api_key: str = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))
     anthropic_base_url: str = field(default_factory=lambda: _env("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/"))
     writer_model: str = field(default_factory=lambda: _env("WRITER_MODEL", "claude-sonnet-5-5"))
+    qa_model: str = field(default_factory=lambda: _env("QA_MODEL"))  # пусто = как writer_model
+    # Google Gemini — бесплатный тариф для демо. Используется, если нет ключа Anthropic.
+    gemini_api_key: str = field(default_factory=lambda: _env("GEMINI_API_KEY"))
+    gemini_writer_model: str = field(default_factory=lambda: _env("GEMINI_WRITER_MODEL", "gemini-flash-latest"))
+    gemini_qa_model: str = field(default_factory=lambda: _env("GEMINI_QA_MODEL", "gemini-flash-lite-latest"))
+    gemini_scorer_model: str = field(default_factory=lambda: _env("GEMINI_SCORER_MODEL", "gemini-flash-lite-latest"))
     scorer_model: str = field(default_factory=lambda: _env("SCORER_MODEL", "claude-haiku-5-5"))
 
     # Расписание и лимиты
