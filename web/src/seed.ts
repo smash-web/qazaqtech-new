@@ -28,7 +28,7 @@ const SOURCES: [string, string, string, number, boolean][] = [
   ['Financial Times: Technology', 'https://www.ft.com/technology', 'https://www.ft.com/technology?format=rss', 9, true],
   ['The Verge', 'https://www.theverge.com', 'https://www.theverge.com/rss/index.xml', 9, true],
   ['CNBC Technology', 'https://www.cnbc.com/technology/', 'https://www.cnbc.com/id/19854910/device/rss/rss.html', 8, true],
-  ['Business Insider: Tech', 'https://www.businessinsider.com/tech', 'https://www.businessinsider.com/sai/rss', 7, true],
+  ['Business Insider: Tech', 'https://www.businessinsider.com/tech', 'https://feeds2.feedburner.com/businessinsider', 7, true],
   ['Platformer', 'https://www.platformer.news', 'https://www.platformer.news/rss/', 8, true],
   ['404 Media', 'https://www.404media.co', 'https://www.404media.co/rss/', 8, true],
   ['Wired', 'https://www.wired.com', 'https://www.wired.com/feed/rss', 8, true],

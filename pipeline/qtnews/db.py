@@ -112,7 +112,10 @@ class Database:
                 if not schema.replace("_", "").isalnum():
                     raise ValueError("PIPELINE_DB_SCHEMA: только буквы, цифры и _")
                 with self._conn.cursor() as cur:
-                    cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+                    # CREATE SCHEMA IF NOT EXISTS требует права CREATE на базу даже для существующей схемы
+                    cur.execute("SELECT 1 FROM pg_namespace WHERE nspname = %s", (schema,))
+                    if cur.fetchone() is None:
+                        cur.execute(f'CREATE SCHEMA "{schema}"')
                     cur.execute(f'SET search_path TO "{schema}"')
                 self._conn.commit()
         else:

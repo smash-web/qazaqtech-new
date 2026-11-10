@@ -17,6 +17,14 @@
 
 Альтернативные провайдеры (другие LLM, переводчики) подключаются через интерфейс `LLM` в `pipeline/qtnews/llm.py`: достаточно реализовать метод `complete()`.
 
+## Состояние тестового стенда
+- Сайт и админка: https://qazaqtech-web.vercel.app (`/admin`). Проект Vercel `qazaqtech-web`, корень `web/`.
+- Конвейер: проект Vercel `qazaqtech-pipeline`, корень `pipeline/`, функция `/api/run`. Запуск по расписанию через pg_cron + pg_net в Supabase (каждые 30 мин).
+- База: Supabase `qazaqtech-news` (eu-central-1), роль `qtnews`, схемы `cms` (Payload) и `pipeline`. Сайт ходит через transaction pooler (6543), конвейер через session pooler (5432).
+- Схема CMS и стартовые данные созданы командой `npm run seed` при `NODE_ENV=development`.
+- Версии: Payload 3.93 требует Next.js 15.4.11+ (или 16.3.3+), поэтому `next` закреплён на `~15.4.11`.
+- VentureBeat отвечает 429 на запросы бота. Business Insider переключён на ленту feedburner (весь BI, не только tech).
+
 ## Прочее, отложенное
 - **Медиа на Vercel.** Файловая система на Vercel только для чтения, поэтому загрузка картинок в админке не сохранится. Решение: `@payloadcms/storage-vercel-blob` или S3 (Supabase Storage / Cloudflare R2).
 - **Миграции.** Сейчас схему CMS синхронизирует workflow `bootstrap` (dev-push). Перед боевым запуском перейти на `payload migrate:create` / `payload migrate`.
