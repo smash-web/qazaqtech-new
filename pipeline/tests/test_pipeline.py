@@ -342,6 +342,9 @@ def test_people_and_shape_filter():
     assert acceptable(c, "Apple MacBook Pro|Laptops", "")
     assert not acceptable(c, "Portraits of men|Apple", "")
     assert not acceptable(c, "Laptops", "personality")
+    talk = ImageCandidate("File:Dario_Amodei_at_TechCrunch_Disrupt_2023_01.jpg", "p", "u", 1920, 1280, "image/jpeg",
+                          "A", "CC BY 2.0")
+    assert not acceptable(talk, "TechCrunch", "")
     assert not acceptable(ImageCandidate("File:x.jpg", "p", "u", 800, 1600, "image/jpeg", "A", "CC0"), "", "")
 
 
@@ -350,7 +353,7 @@ class FakeImages:
         self.found = found
         self.queries = []
 
-    def find(self, queries, category, used):
+    def find(self, queries, category, used, choose=None):
         self.queries.append(list(queries))
         if not self.found:
             return None
@@ -441,3 +444,18 @@ def test_duplicate_story_detected(db):
     assert find_duplicate(cfg, db, judge, sids[1], "2000-01-01") == sids[0]
     assert find_duplicate(cfg, db, None, sids[2], "2000-01-01") is None
     assert duplicate_of(db, sids[2], "2000-01-01") is None
+
+
+def test_finder_uses_chooser_then_fallback(monkeypatch):
+    from qtnews.images import ImageFinder
+
+    f = ImageFinder("ua")
+    calls = []
+
+    def fake_search(q, limit=20):
+        calls.append(q)
+        return [ImageCandidate(f"File:{q}.jpg", f"https://c/{q}", "u", 1600, 900, "image/jpeg", "A", "CC0")]
+
+    monkeypatch.setattr(f, "search", fake_search)
+    picked = f.find(["Anthropic logo"], "ai", set(), choose=lambda cands: None if "logo" in cands[0].title else cands[0])
+    assert picked is not None and "logo" not in picked.title and calls[0] == "Anthropic logo"

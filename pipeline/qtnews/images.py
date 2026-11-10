@@ -40,7 +40,11 @@ DEFAULT_FALLBACK = ["computer server room", "circuit board close-up", "laptop co
 _PEOPLE = re.compile(
     r"\b(people|persons?|portraits?|men|women|man|woman|headshots?|selfies?|children|births|deaths|"
     r"politicians?|businesspeople|executives?|ceos?|speakers?|celebrities|actors?|actresses)\b", re.I)
-_BAD_TITLE = re.compile(r"\b(map|diagram|chart|graph|flag|coat of arms|signature|screenshot|icon|svg)\b", re.I)
+_BAD_TITLE = re.compile(r"\b(map|diagram|chart|graph|flag|coat of arms|signature|screenshot|icon|svg|word cloud|wordcloud)\b", re.I)
+# Фото с мероприятий почти всегда с людьми: «X at TechCrunch Disrupt», «keynote», «press conference»
+_EVENT = re.compile(r"(_|\s)(at|speaking|speaks|during|meets|visit|visits)(_|\s)|disrupt|summit|conference|keynote|"
+                    r"\bforum\b|festival|interview|award|ceremony|panel discussion|meeting|\bpress\b|wwdc|\bces\b|"
+                    r"congressional hearing|senate|rally|protest", re.I)
 
 
 @dataclass
@@ -53,6 +57,13 @@ class ImageCandidate:
     mime: str
     author: str
     license: str
+    categories: str = ""
+    description: str = ""
+
+    @property
+    def label(self) -> str:
+        name = self.title.removeprefix("File:").rsplit(".", 1)[0].replace("_", " ")
+        return name[:140]
 
     @property
     def credit(self) -> str:
@@ -86,7 +97,7 @@ def acceptable(c: ImageCandidate, categories: str, restrictions: str) -> bool:
         return False
     if _PEOPLE.search(categories) or _PEOPLE.search(c.title):
         return False
-    if _BAD_TITLE.search(c.title):
+    if _BAD_TITLE.search(c.title) or _EVENT.search(c.title):
         return False
     return True
 
@@ -103,7 +114,7 @@ class ImageFinder:
             "action": "query", "format": "json", "formatversion": "2",
             "generator": "search", "gsrsearch": f"{query} filetype:bitmap", "gsrnamespace": "6", "gsrlimit": str(limit),
             "prop": "imageinfo", "iiprop": "url|size|mime|extmetadata", "iiurlwidth": str(self.thumb_width),
-            "iiextmetadatafilter": "LicenseShortName|UsageTerms|Artist|Credit|Categories|Restrictions",
+            "iiextmetadatafilter": "LicenseShortName|UsageTerms|Artist|Credit|Categories|Restrictions|ImageDescription",
         }
         try:
             resp = self.session.get(COMMONS_API, params=params, timeout=self.timeout)
@@ -127,6 +138,7 @@ class ImageFinder:
                 image_url=info.get("thumburl") or info.get("url", ""),
                 width=int(info.get("width") or 0), height=int(info.get("height") or 0),
                 mime=info.get("mime", ""), author=author[:120], license=short or usage,
+                categories=_strip(val("Categories"))[:300], description=_strip(val("ImageDescription"))[:300],
             )
             if c.image_url and acceptable(c, _strip(val("Categories")), _strip(val("Restrictions"))):
                 out.append(c)
@@ -139,23 +151,47 @@ class ImageFinder:
             raise ValueError("Слишком большой файл")
         return resp.content
 
-    def find(self, queries: list[str], category: str | None, used_pages: set[str]) -> ImageCandidate | None:
-        """Первый подходящий и ещё не использованный кандидат: сначала запросы ИИ, потом запасные по рубрике."""
-        plan = [q for q in queries if q.strip()][:4]
-        plan += CATEGORY_FALLBACK.get(category or "", []) + DEFAULT_FALLBACK
-        seen: set[str] = set()
-        reused: ImageCandidate | None = None
-        for q in plan:
-            if q.lower() in seen:
+    def candidates(self, queries: list[str], used_pages: set[str], per_query: int = 5,
+                   limit: int = 12) -> list[ImageCandidate]:
+        """Подходящие и ещё не использованные кандидаты по списку запросов (в порядке запросов)."""
+        out: list[ImageCandidate] = []
+        seen_q: set[str] = set()
+        seen_p = set(used_pages)
+        for q in queries:
+            q = q.strip()
+            if not q or q.lower() in seen_q:
                 continue
-            seen.add(q.lower())
+            seen_q.add(q.lower())
+            n = 0
             for c in self.search(q):
-                if c.page_url not in used_pages:
-                    log.info("Фото по запросу «%s»: %s", q, c.title)
-                    return c
-                reused = reused or c
-        return reused
+                if c.page_url in seen_p:
+                    continue
+                seen_p.add(c.page_url)
+                out.append(c)
+                n += 1
+                if n >= per_query or len(out) >= limit:
+                    break
+            if len(out) >= limit:
+                break
+        return out
 
+    def find(self, queries: list[str], category: str | None, used_pages: set[str],
+             choose=None) -> ImageCandidate | None:
+        """Фото к статье: сначала по запросам ИИ, затем запасные по рубрике.
+
+        choose(candidates) -> кандидат | None — выбор фоторедактора (ИИ); без него берётся первый подходящий.
+        """
+        rounds = [[q for q in queries if q.strip()][:4],
+                  CATEGORY_FALLBACK.get(category or "", []) + DEFAULT_FALLBACK]
+        for plan in rounds:
+            cands = self.candidates(plan, used_pages)
+            if not cands:
+                continue
+            pick = choose(cands) if choose else cands[0]
+            if pick is not None:
+                log.info("Фото: %s", pick.title)
+                return pick
+        return None
 
 def filename_for(c: ImageCandidate, slug: str) -> str:
     ext = {"image/png": "png", "image/webp": "webp"}.get(c.mime, "jpg")
