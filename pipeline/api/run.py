@@ -2,7 +2,7 @@
 
 Вызывается планировщиком (pg_cron в Supabase) каждые 30 минут:
     POST /api/run            — сбор + обработка
-    POST /api/run?step=collect | process
+    POST /api/run?step=collect | process | covers
 Заголовок: Authorization: Bearer <CRON_SECRET>
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from qtnews.config import load  # noqa: E402
-from qtnews.main import build_with_cfg, collect, process  # noqa: E402
+from qtnews.main import backfill_covers, build_with_cfg, collect, make_images, process  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -56,7 +56,9 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
             if step in ("both", "collect"):
                 result["collect"] = collect(cfg, db, cms, fetcher)
             if step in ("both", "process"):
-                result["process"] = process(cfg, db, cms, llm, fetcher)
+                result["process"] = process(cfg, db, cms, llm, fetcher, make_images(cfg))
+            if step == "covers":
+                result["covers"] = backfill_covers(cfg, cms, llm, make_images(cfg), cms.used_image_pages(), limit=8)
             result["seconds"] = round(time.time() - started, 1)
             self._send(200, result)
         except Exception as exc:  # noqa: BLE001

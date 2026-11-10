@@ -42,6 +42,8 @@ class Config:
     story_window_hours: int = field(default_factory=lambda: int(_env("STORY_WINDOW_HOURS", "36")))
     timezone: str = field(default_factory=lambda: _env("SITE_TIMEZONE", "Asia/Almaty"))
     fetch_full_text: bool = field(default_factory=lambda: _env("FETCH_FULL_TEXT", "true").lower() == "true")
+    require_image: bool = field(default_factory=lambda: _env("REQUIRE_IMAGE", "true").lower() == "true")
+    duplicate_threshold: float = field(default_factory=lambda: float(_env("DUPLICATE_THRESHOLD", "0.45")))
     user_agent: str = field(default_factory=lambda: _env("USER_AGENT", "QazaqTechNewsBot/1.0 (+https://example.kz/bot)"))
 
 

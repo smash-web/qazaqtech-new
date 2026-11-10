@@ -187,6 +187,15 @@ class Database:
         )
         return [_item(r) for r in rows]
 
+    def items_of_stories(self, statuses: list[str], since: str, exclude_story: int) -> list[Item]:
+        marks = ",".join("?" for _ in statuses)
+        rows = self.query(
+            f"SELECT i.* FROM items i JOIN stories s ON s.id = i.story_id "
+            f"WHERE s.status IN ({marks}) AND s.created_at >= ? AND s.id <> ?",
+            (*statuses, since, exclude_story),
+        )
+        return [_item(r) for r in rows]
+
     def assign_item(self, item_id: int, story_id: int) -> None:
         self.execute("UPDATE items SET story_id = ? WHERE id = ?", (story_id, item_id))
 

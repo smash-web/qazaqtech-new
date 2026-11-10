@@ -324,3 +324,120 @@ def test_gemini_falls_back_to_next_model(monkeypatch):
     monkeypatch.setattr(c.session, "post", post)
     assert c.complete(model="busy-model, spare-model", system="s", prompt="p") == "{}"
     assert sum("busy-model" in u for u in urls) == 1 and urls[-1].endswith("spare-model:generateContent")
+
+
+# --- фото и дубли ------------------------------------------------------------------------
+from qtnews.cluster import duplicate_of  # noqa: E402
+from qtnews.images import ImageCandidate, acceptable, license_ok  # noqa: E402
+from qtnews.main import NO_IMAGE_NOTE, backfill_covers  # noqa: E402
+
+
+def test_license_filter():
+    assert license_ok("CC BY-SA 4.0") and license_ok("CC0") and license_ok("Public domain")
+    assert not license_ok("CC BY-NC 2.0") and not license_ok("CC BY-ND 3.0") and not license_ok("Fair use")
+
+
+def test_people_and_shape_filter():
+    c = ImageCandidate("File:MacBook Pro.jpg", "p", "u", 1600, 1000, "image/jpeg", "A", "CC BY 2.0")
+    assert acceptable(c, "Apple MacBook Pro|Laptops", "")
+    assert not acceptable(c, "Portraits of men|Apple", "")
+    assert not acceptable(c, "Laptops", "personality")
+    assert not acceptable(ImageCandidate("File:x.jpg", "p", "u", 800, 1600, "image/jpeg", "A", "CC0"), "", "")
+
+
+class FakeImages:
+    def __init__(self, found=True):
+        self.found = found
+        self.queries = []
+
+    def find(self, queries, category, used):
+        self.queries.append(list(queries))
+        if not self.found:
+            return None
+        return ImageCandidate("File:X.jpg", f"https://commons/x{len(self.queries)}", "https://u/x.jpg",
+                              1600, 900, "image/jpeg", "Author", "CC BY 4.0")
+
+    def download(self, c):
+        return b"jpeg"
+
+
+class MediaCMS(FakeCMS):
+    def __init__(self, auto_publish):
+        super().__init__(auto_publish)
+        self.uploaded, self.patched, self.without = [], [], []
+
+    def used_image_pages(self):
+        return set()
+
+    def upload_media(self, content, filename, mime, alt, credit):
+        self.uploaded.append((filename, alt, credit))
+        return {"id": 55}
+
+    def articles_without_cover(self, limit=10):
+        return self.without
+
+    def update_article(self, aid, payload):
+        self.patched.append((aid, payload))
+        return {}
+
+
+IMG_ARTICLE = {**ARTICLE, "image_queries": ["OpenAI logo"], "image_alt": "OpenAI логотипі"}
+
+
+def _story_with_llm(db):
+    add(db, "verge", "OpenAI launches reasoning model o5", "OpenAI launched o5")
+
+    def scorer(kw):
+        sid = int(kw["prompt"].split("id=")[1].split(";")[0])
+        return json.dumps({"stories": [{"id": sid, "score": 9, "category": "ai", "reason": "x"}]})
+
+    return FakeLLM([scorer, json.dumps(IMG_ARTICLE), json.dumps({"ok": True, "issues": [], "article": IMG_ARTICLE})])
+
+
+def test_article_published_with_cover(db):
+    cms, images = MediaCMS(True), FakeImages()
+    process(Config(database_url="sqlite:///:memory:"), db, cms, _story_with_llm(db), None, images)
+    art = cms.created[0]
+    assert art["status"] == "published" and art["coverImage"] == 55
+    assert images.queries[0] == ["OpenAI logo"] and "CC BY 4.0" in cms.uploaded[0][2]
+
+
+def test_no_image_holds_article(db):
+    cms = MediaCMS(True)
+    process(Config(database_url="sqlite:///:memory:"), db, cms, _story_with_llm(db), None, FakeImages(found=False))
+    art = cms.created[0]
+    assert art["status"] == "review" and art["coverImage"] is None and NO_IMAGE_NOTE in art["qaNotes"]
+
+
+def test_backfill_releases_held_article():
+    cms = MediaCMS(True)
+    cms.without = [
+        {"id": 1, "status": "review", "qaNotes": NO_IMAGE_NOTE, "title": "T", "tags": [{"tag": "Nvidia"}], "slug": "t"},
+        {"id": 2, "status": "review", "qaNotes": "факт не подтверждён", "title": "R", "tags": [], "slug": "r"},
+        {"id": 3, "status": "published", "title": "P", "tags": [{"tag": "Apple"}], "slug": "p",
+         "category": {"slug": "gadgets"}},
+    ]
+    stats = backfill_covers(Config(database_url="sqlite:///:memory:"), cms, None, FakeImages(), set())
+    assert stats == {"checked": 2, "covered": 2, "released": 1}
+    patched = dict(cms.patched)
+    assert patched[1]["status"] == "published" and patched[1]["coverImage"] == 55
+    assert "status" not in patched[3] and 2 not in patched
+
+
+def test_duplicate_story_detected(db):
+    add(db, "bloomberg", "Anthropic targets $1.4 trillion valuation in IPO")
+    add(db, "ft", "Anthropic sets IPO price range valuing it at up to $1.4 trillion")
+    add(db, "verge", "Apple unveils new MacBook Pro with M6 chip")
+    with db.tx():
+        items = db.unclustered_items("2000-01-01")
+        sids = [db.create_story(i.title) for i in items]
+        for i, sid in zip(items, sids):
+            db.assign_item(i.id, sid)
+        db.update_story(sids[0], status="published")
+    from qtnews.main import find_duplicate
+
+    cfg = Config(database_url="sqlite:///:memory:")
+    judge = FakeLLM([lambda kw: json.dumps({"duplicate_of": int(kw["prompt"].split("id=")[1].split(":")[0])})])
+    assert find_duplicate(cfg, db, judge, sids[1], "2000-01-01") == sids[0]
+    assert find_duplicate(cfg, db, None, sids[2], "2000-01-01") is None
+    assert duplicate_of(db, sids[2], "2000-01-01") is None

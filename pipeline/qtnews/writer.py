@@ -31,6 +31,8 @@ class Draft:
     sources: list[dict]
     qa_ok: bool = True
     qa_issues: list[str] = field(default_factory=list)
+    image_queries: list[str] = field(default_factory=list)
+    image_alt: str = ""
 
 
 WRITER_SYSTEM = """Сен — қазақ тіліндегі технологиялық жаңалықтар порталының тәжірибелі журналисісің.
@@ -65,7 +67,11 @@ ARTICLE_SCHEMA = """{
   "tags": ["<3-6 тегов на казахском или названия продуктов/компаний>"],
   "seo_title": "<до 65 символов>",
   "seo_description": "<до 160 символов>",
-  "category": "<один slug из списка>"
+  "category": "<один slug из списка>",
+  "image_queries": ["<3 коротких запроса НА АНГЛИЙСКОМ для поиска фото на Wikimedia Commons: продукт, устройство,
+                     здание или логотип компании, технология (напр. \"MacBook Pro M3\", \"Anthropic logo\",
+                     \"Nvidia headquarters\"). Никаких людей. От конкретного к общему.>"],
+  "image_alt": "<подпись к фото на казахском, до 120 символов>"
 }"""
 
 
@@ -127,6 +133,8 @@ def write_article(llm: LLM, model: str, materials: list[SourceMaterial], *, glos
             fixed = _to_draft(qa["article"], materials, categories, draft.category)
             fixed.qa_ok = bool(qa.get("ok", False))
             fixed.qa_issues = [str(x)[:300] for x in qa.get("issues", [])][:20]
+            fixed.image_queries = fixed.image_queries or draft.image_queries
+            fixed.image_alt = fixed.image_alt or draft.image_alt
             return fixed
     except LLMError as exc:
         log.warning("QA-проход не удался: %s", exc)
@@ -154,6 +162,8 @@ def _to_draft(data: dict, materials: list[SourceMaterial], categories: list[dict
         seo_description=str(data.get("seo_description", data.get("excerpt", ""))).strip()[:170],
         category=category,
         sources=[{"name": m.name, "url": m.url} for m in materials],
+        image_queries=[str(q).strip()[:80] for q in (data.get("image_queries") or []) if str(q).strip()][:4],
+        image_alt=str(data.get("image_alt") or "").strip()[:200],
     )
 
 
@@ -161,7 +171,8 @@ def _draft_json(d: Draft) -> str:
     import json
 
     return json.dumps({"title": d.title, "excerpt": d.excerpt, "body_markdown": d.body_markdown, "tags": d.tags,
-                       "seo_title": d.seo_title, "seo_description": d.seo_description, "category": d.category},
+                       "seo_title": d.seo_title, "seo_description": d.seo_description, "category": d.category,
+                       "image_queries": d.image_queries, "image_alt": d.image_alt},
                       ensure_ascii=False)
 
 
@@ -193,3 +204,20 @@ def untranslated_draft(materials: list[SourceMaterial], category: str | None) ->
         qa_ok=False,
         qa_issues=["Требуется перевод на казахский (ИИ-переводчик не подключён)"],
     )
+
+
+IMAGE_SYSTEM = """Ты фоторедактор технологического портала. По заголовку и тегам статьи предложи запросы для поиска
+иллюстрации на Wikimedia Commons. Только предметы: продукт, устройство, здание/логотип компании, технология.
+Никаких людей. Отвечай ТОЛЬКО валидным JSON."""
+
+
+def image_queries_for(llm: LLM, model: str, title: str, tags: list[str], excerpt: str = "") -> tuple[list[str], str]:
+    """Запросы для фото к уже готовой статье (для статей, у которых фото нет)."""
+    prompt = (f"Заголовок: {title}\nТеги: {', '.join(tags)}\nЛид: {excerpt}\n\n"
+              'Верни JSON: {"image_queries": ["<3 коротких запроса на английском, от конкретного к общему>"], '
+              '"image_alt": "<подпись к фото на казахском, до 120 символов>"}')
+    data = complete_json(llm, model=model, system=IMAGE_SYSTEM, prompt=prompt, max_tokens=400, temperature=0.2)
+    if not isinstance(data, dict):
+        return [], ""
+    queries = [str(q).strip()[:80] for q in (data.get("image_queries") or []) if str(q).strip()][:4]
+    return queries, str(data.get("image_alt") or "").strip()[:200]

@@ -92,3 +92,39 @@ class CMSClient:
     def create_article(self, payload: dict) -> dict:
         data = self._req("POST", "/articles", json=payload)
         return data.get("doc", data)
+
+    def update_article(self, article_id: int | str, payload: dict) -> dict:
+        data = self._req("PATCH", f"/articles/{article_id}", json=payload)
+        return data.get("doc", data)
+
+    def articles_without_cover(self, limit: int = 10) -> list[dict]:
+        """Опубликованные статьи и статьи, отложенные из-за отсутствия фото."""
+        data = self._req("GET", "/articles", params={
+            "where[coverImage][exists]": "false", "where[status][in]": "published,review",
+            "sort": "-createdAt", "limit": limit, "depth": 1})
+        return data.get("docs", [])
+
+    # --- медиа --------------------------------------------------------------------
+    def used_image_pages(self) -> set[str]:
+        """Страницы Commons, чьи фото уже есть в медиатеке (из подписи), — чтобы не повторяться."""
+        pages: set[str] = set()
+        for m in self._all("media"):
+            credit = m.get("credit") or ""
+            if "commons.wikimedia.org" in credit:
+                pages.add(credit.rsplit(" — ", 1)[-1].strip())
+        return pages
+
+    def upload_media(self, content: bytes, filename: str, mime: str, alt: str, credit: str) -> dict:
+        import json as _json
+
+        resp = requests.post(
+            self.base + "/media",
+            headers={"Authorization": self.session.headers["Authorization"]},
+            files={"file": (filename, content, mime)},
+            data={"_payload": _json.dumps({"alt": alt[:200], "credit": credit[:500]}, ensure_ascii=False)},
+            timeout=max(self.timeout, 60),
+        )
+        if resp.status_code >= 400:
+            raise CMSError(f"CMS POST /media → {resp.status_code}: {resp.text[:400]}")
+        data = resp.json()
+        return data.get("doc", data)

@@ -104,3 +104,34 @@ def cluster_new_items(db: Database, since: str, threshold: float) -> dict[str, i
 def _needs_rescore(db: Database, story_id: int) -> bool:
     """Если к уже оценённому сюжету пришли новые источники — переоценить его."""
     return db.get_story(story_id).status == "scored"
+
+
+
+def similar_stories(db: Database, story_id: int, since: str) -> list[tuple[int, float, str]]:
+    """Уже вышедшие (или на модерации) сюжеты, похожие на данный, — по сходству заголовков.
+
+    Кластеризация иногда делит одно событие на несколько сюжетов (издания пишут заголовки по-разному),
+    поэтому перед написанием статьи сверяемся с тем, что уже вышло. IDF считается по всему окну публикаций,
+    чтобы частые слова («IPO», «AI») весили меньше редких имён и цифр.
+    """
+    mine = db.items_for_story(story_id)
+    others = db.items_of_stories(["published", "review"], since, story_id)
+    if not mine or not others:
+        return []
+    corpus = db.clustered_items_since(since)
+    docs = [tokenize(i.title) for i in mine] + [tokenize(i.title) for i in others] + \
+        [tokenize(i.title) for i in corpus]
+    vectors = tfidf_matrix(docs)
+    sims = vectors[len(mine): len(mine) + len(others)] @ vectors[: len(mine)].T  # (others × mine)
+    best: dict[int, tuple[float, str]] = {}
+    for row, item in enumerate(others):
+        sim = float(sims[row].max())
+        if item.story_id is not None and sim > best.get(item.story_id, (-1.0, ""))[0]:
+            best[item.story_id] = (sim, item.title)
+    return sorted(((sid, sim, title) for sid, (sim, title) in best.items()), key=lambda x: -x[1])
+
+
+def duplicate_of(db: Database, story_id: int, since: str, threshold: float = 0.45) -> int | None:
+    """Эвристика без ИИ: дубль, если заголовки очень похожи."""
+    sims = similar_stories(db, story_id, since)
+    return sims[0][0] if sims and sims[0][1] >= threshold else None
