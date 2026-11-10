@@ -60,7 +60,8 @@ img { max-width: 100%; display: block; }
 .article__lead { font-size: 20px; color: var(--muted); margin: 0 0 20px; }
 .article__cover { margin: 0 0 24px; }
 .article__cover img { border-radius: var(--radius); width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
-.article__cover figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.article__cover figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; overflow-wrap: anywhere; }
+.article__cover figcaption a { color: inherit; text-decoration: underline; }
 .prose { font-size: 18px; line-height: 1.75; }
 .prose h2 { font-size: 24px; margin: 32px 0 8px; }
 .prose h3 { font-size: 20px; margin: 24px 0 8px; }

@@ -60,7 +60,7 @@ export default async function ArticlePage({ params }: Props) {
       <figure className="article__cover">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={cover.src} alt={cover.alt} width={1200} height={675} fetchPriority="high" />
-        {cover.credit && <figcaption>{cover.credit}</figcaption>}
+        {cover.credit && <Credit text={cover.credit} />}
       </figure>
       <div className="prose">
         <RichText data={article.content as never} />
@@ -89,5 +89,17 @@ export default async function ArticlePage({ params }: Props) {
         </section>
       )}
     </article>
+  )
+}
+
+/** Подпись к фото: ссылка на страницу файла/лицензии выносится в короткую ссылку «дереккөз» */
+function Credit({ text }: { text: string }) {
+  const m = text.match(/^(.*?)(?:\s+[—-]\s+)?(https?:\/\/\S+)\s*$/)
+  if (!m) return <figcaption>{text}</figcaption>
+  return (
+    <figcaption>
+      {m[1]}{' '}
+      <a href={m[2]} target="_blank" rel="noopener nofollow">(дереккөз)</a>
+    </figcaption>
   )
 }
