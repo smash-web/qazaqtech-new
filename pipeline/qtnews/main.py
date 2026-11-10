@@ -151,14 +151,16 @@ def photo_chooser(llm: LLM | None, model: str, title: str, context: str):
 
 
 def find_cover(cms: CMSClient, images: ImageFinder, queries: list[str], alt: str, category: str | None,
-               slug: str, used: set[str], choose=None) -> int | None:
+               slug: str, used: set[str], choose=None, title_hint: str = "") -> int | None:
     """Ищет свободное фото на Commons и загружает его в медиатеку. Возвращает id медиа или None."""
     cand = images.find(queries, category, used, choose)
     if cand is None:
         return None
     try:
         content = images.download(cand)
-        media = cms.upload_media(content, filename_for(cand, slug), cand.mime, alt or cand.title, cand.credit)
+        if cand.generic or not alt:
+            alt = f"{title_hint} — иллюстрация" if title_hint else cand.label
+        media = cms.upload_media(content, filename_for(cand, slug), cand.mime, alt, cand.credit)
     except Exception as exc:  # noqa: BLE001 — нет фото не должно ронять конвейер
         log.warning("Фото %s не загружено: %s", cand.page_url, exc)
         return None
@@ -191,7 +193,8 @@ def backfill_covers(cfg: Config, cms: CMSClient, llm: LLM | None, images: ImageF
         cat_slug = cat.get("slug") if isinstance(cat, dict) else None
         media_id = find_cover(cms, images, queries, alt or art.get("title", ""), cat_slug,
                               art.get("slug", "cover"), used,
-                              photo_chooser(llm, cfg.scorer_model, art.get("title", ""), art.get("excerpt", "")))
+                              photo_chooser(llm, cfg.scorer_model, art.get("title", ""), art.get("excerpt", "")),
+                              title_hint=art.get("title", ""))
         if media_id is None:
             continue
         patch: dict = {"coverImage": media_id}
@@ -271,7 +274,8 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
             if images is not None and llm is not None:
                 cover_id = find_cover(cms, images, draft.image_queries, draft.image_alt or draft.title,
                                       draft.category, slug, used_images,
-                                      photo_chooser(llm, cfg.scorer_model, draft.title, draft.excerpt))
+                                      photo_chooser(llm, cfg.scorer_model, draft.title, draft.excerpt),
+                                      title_hint=draft.title)
                 if cover_id is None and cfg.require_image and go_live:
                     go_live = False  # без фото не публикуем: статья ждёт, backfill_covers выпустит её позже
                     draft.qa_issues.append(NO_IMAGE_NOTE)

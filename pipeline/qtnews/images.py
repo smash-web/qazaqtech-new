@@ -59,6 +59,7 @@ class ImageCandidate:
     license: str
     categories: str = ""
     description: str = ""
+    generic: bool = False  # нейтральная иллюстрация из запасного раунда (подпись от ИИ к ней не относится)
 
     @property
     def label(self) -> str:
@@ -194,6 +195,7 @@ class ImageFinder:
             if pick is None and generic:
                 pick = cands[0]
             if pick is not None:
+                pick.generic = generic
                 log.info("Фото: %s", pick.title)
                 return pick
         return None
