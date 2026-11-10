@@ -323,4 +323,4 @@ def test_gemini_falls_back_to_next_model(monkeypatch):
     c = GeminiClient("k", min_interval_s=0)
     monkeypatch.setattr(c.session, "post", post)
     assert c.complete(model="busy-model, spare-model", system="s", prompt="p") == "{}"
-    assert sum("busy-model" in u for u in urls) == 2 and urls[-1].endswith("spare-model:generateContent")
+    assert sum("busy-model" in u for u in urls) == 1 and urls[-1].endswith("spare-model:generateContent")

@@ -81,7 +81,7 @@ class GeminiClient:
     выдерживается пауза, а на 429 — повтор с ожиданием.
     """
 
-    def __init__(self, api_key: str, base_url: str = "https://generativelanguage.googleapis.com", timeout: int = 120,
+    def __init__(self, api_key: str, base_url: str = "https://generativelanguage.googleapis.com", timeout: int = 75,
                  max_retries: int = 4, min_interval_s: float = 7.0):
         if not api_key:
             raise LLMError("GEMINI_API_KEY не задан")
@@ -101,7 +101,7 @@ class GeminiClient:
         for i, m in enumerate(models):
             try:
                 return self._complete_one(m, system, prompt, max_tokens, temperature,
-                                          retries=self.max_retries if i == len(models) - 1 else 2)
+                                          retries=self.max_retries if i == len(models) - 1 else 1)
             except _Overloaded as exc:
                 log.warning("Модель %s перегружена, пробуем следующую", m)
                 last = LLMError(str(exc))
