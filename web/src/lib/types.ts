@@ -21,3 +21,12 @@ export type ArticleDoc = {
 export const asCategory = (c: ArticleDoc['category']): CategoryDoc | null =>
   c && typeof c === 'object' ? c : null
 export const asMedia = (m: ArticleDoc['coverImage']): MediaDoc | null => (m && typeof m === 'object' ? m : null)
+
+export type PageDoc = {
+  id: number | string; title: string; slug: string; summary?: string | null; content: unknown
+  showInFooter?: boolean | null; updatedAt: string
+}
+export type SiteSettingsDoc = {
+  about?: string | null; email?: string | null; adsEmail?: string | null
+  social?: Partial<Record<'telegram' | 'instagram' | 'youtube' | 'facebook' | 'x' | 'threads', string | null>> | null
+}

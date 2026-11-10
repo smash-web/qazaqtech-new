@@ -9,9 +9,11 @@ import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
 import sharp from 'sharp'
 
 import { Articles } from './collections/Articles'
+import { Pages } from './collections/Pages'
 import { Categories, Glossary, Media, Sources } from './collections/Taxonomy'
 import { Users } from './collections/Users'
 import { PipelineSettings } from './globals/PipelineSettings'
+import { SiteSettings } from './globals/SiteSettings'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -24,8 +26,8 @@ export default buildConfig({
     meta: { titleSuffix: ' — Редакция' },
     importMap: { baseDir: path.resolve(dirname) },
   },
-  collections: [Articles, Categories, Media, Sources, Glossary, Users],
-  globals: [PipelineSettings],
+  collections: [Articles, Categories, Pages, Media, Sources, Glossary, Users],
+  globals: [SiteSettings, PipelineSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   db: postgresAdapter({

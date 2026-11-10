@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { Footer, Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
+import { Header } from '@/components/Header'
 import { SITE } from '@/lib/site'
 import './globals.css'
 

@@ -39,6 +39,10 @@ export const Sources: CollectionConfig = {
     description: 'Мировые издания, из которых конвейер собирает новости (RSS/Atom).',
   },
   access: { read: isStaff, create: isEditor, update: isEditor, delete: isEditor },
+  hooks: {
+    afterChange: [({ doc }) => (revalidate('sources'), doc)],
+    afterDelete: [({ doc }) => (revalidate('sources'), doc)],
+  },
   fields: [
     { name: 'name', label: 'Название', type: 'text', required: true },
     { name: 'siteUrl', label: 'Сайт', type: 'text' },
