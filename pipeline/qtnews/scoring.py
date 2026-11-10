@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 from datetime import datetime, timezone
 
 from . import db as dbm
@@ -10,6 +11,13 @@ from .db import Database, Item, Story
 from .llm import LLM, LLMError, complete_json
 
 log = logging.getLogger(__name__)
+
+# Рекламные и «купонные» публикации (промокоды, распродажи, подборки скидок) — не новости
+JUNK_TITLE = re.compile(
+    r"(promo ?codes?|coupons?|discount codes?|\d+% off|\$\d+ off|best .* deals|deals? of the|on sale|black friday|"
+    r"cyber monday|referral deals|gift guide|best tv shows to stream)",
+    re.I,
+)
 
 HEURISTIC_WEIGHT = 0.4
 LLM_WEIGHT = 0.6
@@ -97,11 +105,16 @@ def score_stories(db: Database, llm: LLM | None, model: str, since: str, categor
     pairs = [(s, db.items_for_story(s.id)) for s in stories]
     allowed = {c["slug"] for c in categories}
 
+    junk = {s.id for s, items in pairs if items and all(JUNK_TITLE.search(i.title) for i in items)}
     with db.tx():
         for s, items in pairs:
+            if s.id in junk:
+                db.update_story(s.id, status=dbm.SKIPPED, score_reason="promo/deals")
+                continue
             h = heuristic_score(items)
             db.update_story(s.id, heuristic_score=h, final_score=h, status=dbm.SCORED,
                             category=guess_category(items, allowed))
+    pairs = [(s, items) for s, items in pairs if s.id not in junk]
 
     llm_scored = 0
     if llm is not None:
@@ -127,4 +140,4 @@ def score_stories(db: Database, llm: LLM | None, model: str, since: str, categor
                         fields["category"] = row["category"]
                     db.update_story(sid, **fields)
                     llm_scored += 1
-    return {"scored": len(pairs), "llm_scored": llm_scored}
+    return {"scored": len(pairs), "llm_scored": llm_scored, "skipped_junk": len(junk)}

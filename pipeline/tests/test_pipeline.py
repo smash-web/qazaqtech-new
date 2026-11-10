@@ -253,3 +253,12 @@ def test_guess_category():
     assert guess_category([it("OpenAI releases new model for ChatGPT")], allowed) == "ai"
     assert guess_category([it("Startup raises $50M Series B at $1B valuation")], allowed) == "startups"
     assert guess_category([it("Weather is nice")], allowed) is None
+
+
+def test_promo_titles_are_skipped(db):
+    add(db, "wired", "Dyson Promo Codes: 25% Off in November 2026")
+    add(db, "verge", "Nvidia unveils new data center GPU for AI training")
+    cluster_new_items(db, "0", 0.42)
+    out = score_stories(db, None, "m", "0", [])
+    assert out["skipped_junk"] == 1
+    assert [s.title for s in db.stories_by_status([dbm.SCORED], "0")] == ["Nvidia unveils new data center GPU for AI training"]
