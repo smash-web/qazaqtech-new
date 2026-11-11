@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { coverOf } from '@/lib/cover'
+import { Views } from './Views'
 import { formatDate, timeAgo } from '@/lib/site'
 import { asCategory, type ArticleDoc } from '@/lib/types'
 
@@ -25,6 +26,7 @@ export function ArticleCard({ article, variant = 'default' }: { article: Article
           <time dateTime={article.publishedAt || undefined} title={formatDate(article.publishedAt)}>
             {timeAgo(article.publishedAt)}
           </time>
+          <Views id={article.id} initial={article.views ?? 0} />
         </div>
         <h2 className="card__title"><Link href={href}>{article.title}</Link></h2>
         {showExcerpt && article.excerpt && <p className="card__excerpt">{article.excerpt}</p>}

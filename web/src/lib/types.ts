@@ -7,6 +7,7 @@ export type ArticleDoc = {
   title: string
   slug: string
   excerpt?: string | null
+  views?: number | null
   content: unknown
   coverImage?: MediaDoc | number | string | null
   category?: CategoryDoc | number | string | null

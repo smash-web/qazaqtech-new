@@ -108,6 +108,7 @@ export const Articles: CollectionConfig = {
     { name: 'needsTranslation', label: 'Нужен перевод', type: 'checkbox', defaultValue: false, index: true, admin: { position: 'sidebar', description: 'Черновик конвейера без ИИ: текст источников на языке оригинала' } },
     { name: 'aiGenerated', label: 'Подготовлено ИИ', type: 'checkbox', defaultValue: false, admin: { position: 'sidebar' } },
     { name: 'importanceScore', label: 'Оценка важности (0–10)', type: 'number', admin: { position: 'sidebar', readOnly: true } },
+    { name: 'views', label: 'Просмотры', type: 'number', defaultValue: 0, access: { update: () => false }, admin: { position: 'sidebar', readOnly: true } },
     { name: 'qaNotes', label: 'Замечания ИИ-проверки', type: 'textarea', admin: { position: 'sidebar', readOnly: true } },
     { name: 'pipelineStoryId', label: 'ID сюжета конвейера', type: 'number', unique: true, index: true, admin: { position: 'sidebar', readOnly: true } },
   ],

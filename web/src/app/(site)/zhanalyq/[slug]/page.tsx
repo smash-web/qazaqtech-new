@@ -8,6 +8,7 @@ import { Share } from '@/components/Share'
 import { articleBySlug, latestArticles } from '@/lib/cms'
 import { formatDate, SITE } from '@/lib/site'
 import { readingMinutes } from '@/lib/text'
+import { Views } from '@/components/Views'
 import { coverOf } from '@/lib/cover'
 import { asCategory } from '@/lib/types'
 
@@ -71,6 +72,8 @@ export default async function ArticlePage({ params }: Props) {
           <time dateTime={article.publishedAt || undefined}>{formatDate(article.publishedAt)}</time>
           <span aria-hidden="true">·</span>
           <span>{minutes} мин оқу</span>
+          <span aria-hidden="true">·</span>
+          <Views id={article.id} initial={article.views ?? 0} track />
           {!!article.sources?.length && (
             <>
               <span aria-hidden="true">·</span>

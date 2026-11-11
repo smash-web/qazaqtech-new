@@ -77,6 +77,9 @@ img { max-width: 100%; display: block; }
 
 /* ---------- cards ---------- */
 .meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+/* просмотры */
+.views { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.views svg { flex: none; opacity: .8; }
 .tag { background: var(--accent-soft); color: var(--accent); padding: 2px 9px; border-radius: 999px; font-weight: 600; font-size: 12px; }
 .card__media { display: block; overflow: hidden; border-radius: var(--radius); background: var(--line); }
 .card__media img { aspect-ratio: 16 / 9; object-fit: cover; width: 100%; height: auto; transition: transform .35s ease; }
