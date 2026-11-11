@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS run_log (
 NEW, SCORED, SELECTED, PUBLISHED, IN_REVIEW, SKIPPED, FAILED = (
     "new", "scored", "selected", "published", "review", "skipped", "failed",
 )
+THIN = "thin"  # мало материала (источник за пейволом): ждём, пока о событии напишет открытое издание
 
 
 def utcnow() -> str:

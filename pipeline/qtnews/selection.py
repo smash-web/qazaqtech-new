@@ -102,21 +102,23 @@ def pick(stories: list[Story], n: int, min_score: float, *, recent: list[Story] 
 
 def select_for_run(db: Database, *, quota: int, min_score: float, max_per_run: int, tz: str, interval_min: int,
                    window_hours: int, publish_from: int = 7, publish_to: int = 23,
-                   now: datetime | None = None) -> list[Story]:
+                   now: datetime | None = None, spare: int = 0) -> tuple[list[Story], int]:
+    """Возвращает (кандидаты, сколько статей выпустить). Кандидатов на spare больше — на случай,
+    если часть отсеется перед написанием (дубль, мало материала)."""
     now = now or datetime.now(timezone.utc)
     done = db.count_published_since(day_start_utc(tz, now))
     n = slots_for_this_run(quota=quota, done_today=done, max_per_run=max_per_run, tz=tz,
                            interval_min=interval_min, publish_from=publish_from, publish_to=publish_to, now=now)
     if n == 0:
-        return []
+        return [], 0
     since = (now - timedelta(hours=window_hours)).replace(microsecond=0).isoformat()
     # SELECTED — на случай, если прошлый запуск прервался посреди работы (дубль исключит проверка в CMS).
     # Сюжеты, которые не удалось написать 3 раза, больше не берём.
     pool = [s for s in db.stories_by_status([dbm.SCORED, dbm.SELECTED, dbm.FAILED], since) if s.attempts < 3]
     pool.sort(key=lambda s: (s.status != dbm.SELECTED, -s.final_score))  # недописанные в прошлый раз — первыми
     day_ago = (now - timedelta(hours=24)).replace(microsecond=0).isoformat()
-    chosen = pick(pool, n, min_score, recent=db.stories_updated_since([dbm.PUBLISHED, dbm.IN_REVIEW], day_ago))
+    chosen = pick(pool, n + spare, min_score, recent=db.stories_updated_since([dbm.PUBLISHED, dbm.IN_REVIEW], day_ago))
     with db.tx():
         for s in chosen:
             db.update_story(s.id, status=dbm.SELECTED)
-    return chosen
+    return chosen, n

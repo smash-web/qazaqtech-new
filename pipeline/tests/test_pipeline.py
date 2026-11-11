@@ -1,3 +1,6 @@
+import os
+
+os.environ.setdefault("MIN_MATERIAL_CHARS", "0")  # в тестах материалы короткие
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -9,7 +12,7 @@ from qtnews.config import Config
 from qtnews.db import Database
 from qtnews.feeds import extract_main_text, normalize_url, parse_feed
 from qtnews.lexical import markdown_to_lexical
-from qtnews.llm import extract_json
+from qtnews.llm import LLMError, extract_json
 from qtnews.main import process
 from qtnews.cms import EditorialSettings
 from qtnews.scoring import heuristic_score, score_stories
@@ -522,3 +525,31 @@ def test_topic_cap_and_penalty():
     assert 1 not in got            # об Anthropic уже 2 статьи за сутки
     assert got[0] == 3             # Apple обгоняет Nvidia со штрафом за повтор
     assert pick([_st(1, "Anthropic IPO priced", 9.5)], 1, 6, recent=recent)[0].id == 1  # больше нечего — берём
+
+
+# --- качество очереди модерации ------------------------------------------------------------
+def test_thin_material_story_waits_and_spare_is_used(db):
+    add(db, "bloomberg", "OpenAI revenue soars to 10 billion", "Short teaser.")
+    add(db, "verge", "Apple unveils new MacBook Pro with M6 chip", "Apple unveiled a new MacBook Pro. " * 60)
+
+    def scorer(kw):
+        ids = [int(x.split(";")[0]) for x in kw["prompt"].split("id=")[1:]]
+        return json.dumps({"stories": [{"id": i, "score": 9 if n == 0 else 8, "category": "ai" if n == 0 else "gadgets",
+                                        "reason": "x"} for n, i in enumerate(ids)]})
+
+    llm = FakeLLM([scorer, json.dumps(ARTICLE), json.dumps({"ok": True, "issues": [], "article": ARTICLE})])
+    cms = MediaCMS(True)
+    cfg = Config(database_url="sqlite:///:memory:", min_material_chars=1200, max_articles_per_run=1)
+    stats = process(cfg, db, cms, llm, None)
+    assert stats["thin"] == 1 and stats["published"] == 1 and len(cms.created) == 1
+    assert len(db.stories_by_status([dbm.THIN], "0")) == 1
+
+
+def test_failed_qa_does_not_reach_moderation(db):
+    cms = MediaCMS(True)
+    llm = _story_with_llm(db)
+    llm.responses[2] = lambda kw: (_ for _ in ()).throw(LLMError("503"))
+    llm.responses.append(llm.responses[2])
+    stats = process(Config(database_url="sqlite:///:memory:"), db, cms, llm, None)
+    assert not cms.created and stats["failed"] == 1 and stats["review"] == 0
+    assert db.stories_by_status([dbm.FAILED], "0")[0].attempts == 1

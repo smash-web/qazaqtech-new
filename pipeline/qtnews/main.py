@@ -29,7 +29,8 @@ from .llm import AnthropicClient, DeadlineExceeded, GeminiClient, LLM, LLMError,
 from .scoring import score_stories
 from .selection import select_for_run
 from .slug import slugify
-from .writer import image_queries_for, materials_from_items, untranslated_draft, write_article
+from .writer import (image_queries_for, material_chars, materials_from_items, untranslated_draft,
+                     write_article)
 
 log = logging.getLogger("qtnews")
 
@@ -243,20 +244,26 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
     stats["cluster"] = cluster_new_items(db, since, cfg.cluster_threshold)
     stats["score"] = score_stories(db, llm, cfg.scorer_model, since, categories, settings.selection_guidance)
 
-    chosen = select_for_run(
+    chosen, quota_now = select_for_run(
         db, quota=settings.daily_quota, min_score=settings.min_score, max_per_run=cfg.max_articles_per_run,
         tz=cfg.timezone, interval_min=cfg.process_interval_min, window_hours=cfg.story_window_hours,
-        publish_from=settings.publish_from_hour, publish_to=settings.publish_to_hour,
+        publish_from=settings.publish_from_hour, publish_to=settings.publish_to_hour, spare=3,
     )
-    stats["selected"] = len(chosen)
+    stats["selected"] = min(len(chosen), quota_now)
     if not chosen:
         db.log_run("process", stats)
         return stats
 
     glossary = cms.glossary()
     cat_ids = {c["slug"]: c["id"] for c in categories}
-    published = review = failed = duplicates = 0
-    for story in chosen:
+    published = review = failed = duplicates = thin = 0
+    for n_story, story in enumerate(chosen):
+        if published + review >= quota_now:
+            # Запасные кандидаты не понадобились — возвращаем их в общий пул
+            with db.tx():
+                for rest in chosen[n_story:]:
+                    db.update_story(rest.id, status=dbm.SCORED)
+            break
         if _left(deadline) < cfg.article_seconds:
             stats["stopped_by_time"] = True
             log.info("До лимита запуска %.0f с — сюжет %s перенесён на следующий запуск", _left(deadline), story.id)
@@ -277,6 +284,13 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
             if fetcher and cfg.fetch_full_text:
                 for m in materials[:3]:
                     m.full_text = fetcher.fetch_article_text(m.url)
+            if llm is not None and material_chars(materials) < cfg.min_material_chars:
+                thin += 1
+                log.info("Сюжет %s: мало материала (%d симв.) — ждём открытый источник", story.id,
+                         material_chars(materials))
+                with db.tx():
+                    db.update_story(story.id, status=dbm.THIN, error="мало материала: только анонс источника")
+                continue
             if llm is None:
                 # Режим без ИИ: черновик с исходными материалами уходит редактору на перевод/модерацию
                 draft = untranslated_draft(materials, story.category)
@@ -332,7 +346,8 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
             log.error("Сюжет %s не обработан: %s", story.id, exc)
             with db.tx():
                 db.update_story(story.id, status=dbm.FAILED, error=str(exc)[:1000], attempts=story.attempts + 1)
-    stats.update({"published": published, "review": review, "failed": failed, "duplicates": duplicates})
+    stats.update({"published": published, "review": review, "failed": failed, "duplicates": duplicates,
+                  "thin": thin})
     db.log_run("process", stats)
     log.info("Обработка: %s", stats)
     return stats

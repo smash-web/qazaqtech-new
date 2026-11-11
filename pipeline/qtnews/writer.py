@@ -139,10 +139,14 @@ def write_article(llm: LLM, model: str, materials: list[SourceMaterial], *, glos
     except DeadlineExceeded:
         raise  # статья без проверки не выйдет; сюжет допишет следующий запуск
     except LLMError as exc:
-        log.warning("QA-проход не удался: %s", exc)
-    draft.qa_ok = False
-    draft.qa_issues = ["QA-проверка не выполнена"]
-    return draft
+        # Сбой ИИ, а не замечание к тексту: сырой черновик редактору не отправляем, сюжет повторится позже
+        raise LLMError(f"QA-проверка не выполнена: {exc}") from exc
+    raise LLMError("QA-проверка не выполнена: некорректный ответ ИИ")
+
+
+def material_chars(materials: list[SourceMaterial]) -> int:
+    """Сколько текста реально есть для статьи (полный текст, если удалось получить, иначе анонс из ленты)."""
+    return sum(max(len(m.full_text or ""), len(m.summary or "")) for m in materials)
 
 
 def _to_draft(data: dict, materials: list[SourceMaterial], categories: list[dict],

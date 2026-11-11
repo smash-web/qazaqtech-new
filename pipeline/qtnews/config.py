@@ -46,6 +46,8 @@ class Config:
     run_budget_seconds: int = field(default_factory=lambda: int(_env("RUN_BUDGET_SECONDS", "285")))
     article_seconds: int = field(default_factory=lambda: int(_env("ARTICLE_SECONDS", "150")))
     cover_seconds: int = field(default_factory=lambda: int(_env("COVER_SECONDS", "60")))
+    # Меньше стольких символов исходного материала — статью не пишем (один анонс из-за пейвола)
+    min_material_chars: int = field(default_factory=lambda: int(_env("MIN_MATERIAL_CHARS", "1200")))
     require_image: bool = field(default_factory=lambda: _env("REQUIRE_IMAGE", "true").lower() == "true")
     duplicate_threshold: float = field(default_factory=lambda: float(_env("DUPLICATE_THRESHOLD", "0.45")))
     user_agent: str = field(default_factory=lambda: _env("USER_AGENT", "QazaqTechNewsBot/1.0 (+https://example.kz/bot)"))

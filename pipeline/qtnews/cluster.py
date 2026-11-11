@@ -102,8 +102,8 @@ def cluster_new_items(db: Database, since: str, threshold: float) -> dict[str, i
 
 
 def _needs_rescore(db: Database, story_id: int) -> bool:
-    """Если к уже оценённому сюжету пришли новые источники — переоценить его."""
-    return db.get_story(story_id).status == "scored"
+    """Если к уже оценённому (или отложенному из-за нехватки материала) сюжету пришли новые источники — переоценить."""
+    return db.get_story(story_id).status in ("scored", "thin")
 
 
 
