@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { SearchBox } from './SearchBox'
 
 type Item = { href: string; label: string }
 
@@ -28,9 +29,7 @@ export function MobileMenu({ sections, pages }: { sections: Item[]; pages: Item[
       </button>
       {open && (
         <div className="drawer" role="dialog" aria-modal="true" aria-label="Мәзір">
-          <form action="/izdeu" className="drawer__search" role="search">
-            <input name="q" type="search" placeholder="Сайттан іздеу…" aria-label="Сайттан іздеу" />
-          </form>
+          <SearchBox className="drawer__search" placeholder="Сайттан іздеу…" />
           <p className="drawer__label">Айдарлар</p>
           <nav className="drawer__list">
             {sections.map((s) => (

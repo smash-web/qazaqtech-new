@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { categories, latestArticles, pages, siteSettings } from '@/lib/cms'
 import { formatToday, SITE } from '@/lib/site'
 import { MobileMenu } from './MobileMenu'
+import { SearchBox } from './SearchBox'
 import { NavLinks } from './NavLinks'
 import { SocialLinks } from './SocialLinks'
 
@@ -33,9 +34,7 @@ export async function Header() {
           <span className="logo__text"><span className="logo__accent">Qazaq</span>Tech</span>
         </Link>
         <span className="header__tagline">{SITE.tagline}</span>
-        <form action="/izdeu" className="search" role="search">
-          <input name="q" type="search" placeholder="Іздеу…" aria-label="Сайттан іздеу" />
-        </form>
+        <SearchBox />
       </div>
 
       <nav className="nav-wrap" aria-label="Айдарлар">
