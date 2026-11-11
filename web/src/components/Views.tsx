@@ -19,22 +19,64 @@ export function EyeIcon() {
   )
 }
 
+// Общее хранилище свежих счётчиков: страницы сайта кэшируются, поэтому числа в карточках
+// дозапрашиваются одним пакетным запросом после загрузки.
+const fresh = new Map<string, number>()
+const listeners = new Map<string, Set<(n: number) => void>>()
+let pending = new Set<string>()
+let timer: ReturnType<typeof setTimeout> | null = null
+
+function publish(id: string, n: number) {
+  fresh.set(id, n)
+  listeners.get(id)?.forEach((fn) => fn(n))
+}
+
+function request(id: string) {
+  pending.add(id)
+  if (timer) return
+  timer = setTimeout(() => {
+    const ids = [...pending]
+    pending = new Set()
+    timer = null
+    fetch(`/hit?ids=${ids.join(',')}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: Record<string, number> | null) => {
+        if (d) for (const [k, v] of Object.entries(d)) publish(k, Number(v))
+      })
+      .catch(() => {})
+  }, 60)
+}
+
 /** Глазок с числом просмотров. С track — засчитывает просмотр (один раз за сессию браузера). */
 export function Views({ id, initial = 0, track = false }: { id: number | string; initial?: number; track?: boolean }) {
+  const key = String(id)
   const [views, setViews] = useState(initial)
 
   useEffect(() => {
-    if (!track) return
-    const key = `qt-viewed-${id}`
-    try {
-      if (sessionStorage.getItem(key)) return
-      sessionStorage.setItem(key, '1')
-    } catch { /* приватный режим: считаем без защиты от повтора */ }
-    fetch(`/hit/${id}`, { method: 'POST', keepalive: true })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && typeof d.views === 'number') setViews(d.views) })
-      .catch(() => {})
-  }, [id, track])
+    let set = listeners.get(key)
+    if (!set) listeners.set(key, (set = new Set()))
+    set.add(setViews)
+
+    let counted = true
+    if (track) {
+      try {
+        counted = !!sessionStorage.getItem(`qt-viewed-${key}`)
+        if (!counted) sessionStorage.setItem(`qt-viewed-${key}`, '1')
+      } catch { counted = false /* приватный режим: считаем без защиты от повтора */ }
+    }
+    if (track && !counted) {
+      fetch(`/hit/${key}`, { method: 'POST', keepalive: true })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && typeof d.views === 'number') publish(key, d.views) })
+        .catch(() => {})
+    } else {
+      request(key)
+    }
+    // Возврат кнопкой «Назад» восстанавливает страницу из памяти браузера — обновляем числа и тогда
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted) request(key) }
+    window.addEventListener('pageshow', onShow)
+    return () => { set!.delete(setViews); window.removeEventListener('pageshow', onShow) }
+  }, [key, track])
 
   return (
     <span className="views" title="Қаралым саны" aria-label={`${views} қаралым`}>
