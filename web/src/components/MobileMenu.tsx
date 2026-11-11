@@ -21,9 +21,9 @@ export function MobileMenu({ sections, pages }: { sections: Item[]; pages: Item[
       <button className="burger" aria-label={open ? 'Мәзірді жабу' : 'Мәзірді ашу'} aria-expanded={open}
         onClick={() => setOpen((v) => !v)}>
         {/* SVG, а не span-полоски: в Safari на iOS пустые flex-элементы внутри <button> не отрисовываются */}
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" aria-hidden="true">
-          {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+          {open ? <path d="M3 3l18 18M21 3L3 21" /> : <path d="M1 3h22M1 12h22M1 21h22" />}
         </svg>
       </button>
       {open && (

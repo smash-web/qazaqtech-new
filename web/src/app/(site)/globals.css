@@ -66,7 +66,7 @@ img { max-width: 100%; display: block; }
 
 /* burger + drawer (mobile) */
 .burger { display: none; flex: 0 0 40px; width: 40px; height: 40px; border: 0; margin: 0; padding: 0; background: transparent; color: var(--fg); cursor: pointer; align-items: center; justify-content: center; -webkit-appearance: none; appearance: none; -webkit-tap-highlight-color: transparent; }
-.burger svg { display: block; width: 24px; height: 24px; }
+.burger svg { display: block; width: 26px; height: 26px; }
 .drawer { position: fixed; inset: 0; top: var(--drawer-top, 0); z-index: 50; background: var(--bg); overflow-y: auto; padding: 84px 20px 40px; }
 .drawer__search input { width: 100%; border: 1px solid var(--line); background: var(--bg-soft); color: var(--fg); border-radius: 12px; padding: 12px 14px; font: inherit; }
 .drawer__label { margin: 24px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
