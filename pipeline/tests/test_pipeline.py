@@ -496,3 +496,29 @@ def test_deadline_during_writing_keeps_story(db):
     stats = process(Config(database_url="sqlite:///:memory:"), db, cms, llm, None)
     assert stats.get("stopped_by_time") and stats["failed"] == 0 and not cms.created
     assert db.stories_by_status([dbm.SELECTED], "0")[0].attempts == 0
+
+
+# --- разнообразие тем --------------------------------------------------------------------
+from qtnews.selection import topics_of  # noqa: E402
+
+
+def _st(i, title, score, cat="ai"):
+    from qtnews.db import Story
+    return Story(i, title, "", dbm.SCORED, 5, score, score, cat, None, None, 0)
+
+
+def test_topics_detected():
+    assert topics_of("Anthropic targets $1.4tn IPO") == {"anthropic"}
+    assert topics_of("Jensen Huang's affair complicates Nvidia") == {"nvidia"}
+    assert topics_of("Metadata leak at a startup") == set()
+
+
+def test_topic_cap_and_penalty():
+    recent = [_st(90, "Anthropic sets IPO range", 9), _st(91, "Claude gets office suite", 9),
+              _st(92, "Nvidia earnings beat", 9, "big-tech")]
+    pool = [_st(1, "Anthropic bankers raise IPO valuation", 9.5), _st(2, "Nvidia CEO scandal widens", 8.0, "big-tech"),
+            _st(3, "Apple tests local AI app for Mac", 7.3, "gadgets"), _st(4, "SSH flaw exploited", 7.0, "security")]
+    got = [s.id for s in pick(pool, 3, 6, recent=recent)]
+    assert 1 not in got            # об Anthropic уже 2 статьи за сутки
+    assert got[0] == 3             # Apple обгоняет Nvidia со штрафом за повтор
+    assert pick([_st(1, "Anthropic IPO priced", 9.5)], 1, 6, recent=recent)[0].id == 1  # больше нечего — берём

@@ -217,6 +217,11 @@ class Database:
         )
         return [_story(r) for r in rows]
 
+    def stories_updated_since(self, statuses: list[str], since: str) -> list[Story]:
+        marks = ",".join("?" for _ in statuses)
+        rows = self.query(f"SELECT * FROM stories WHERE status IN ({marks}) AND updated_at >= ?", (*statuses, since))
+        return [_story(r) for r in rows]
+
     def update_story(self, story_id: int, **fields: Any) -> None:
         if not fields:
             return
