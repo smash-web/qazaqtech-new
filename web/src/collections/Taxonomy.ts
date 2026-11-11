@@ -6,7 +6,7 @@ import { slugify } from '../lib/slugify'
 export const Categories: CollectionConfig = {
   slug: 'categories',
   labels: { singular: 'Рубрика', plural: 'Рубрики' },
-  admin: { useAsTitle: 'name', defaultColumns: ['name', 'slug', 'order'], group: 'Контент' },
+  admin: { hidden: ({ user }) => user?.role === 'author', useAsTitle: 'name', defaultColumns: ['name', 'slug', 'order'], group: 'Контент' },
   defaultSort: 'order',
   access: { read: anyone, create: isEditor, update: isEditor, delete: isEditor },
   hooks: {
@@ -36,6 +36,7 @@ export const Sources: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'weight', 'active', 'feedUrl'],
     group: 'Конвейер',
+    hidden: ({ user }) => user?.role === 'author',
     description: 'Мировые издания, из которых конвейер собирает новости (RSS/Atom).',
   },
   access: { read: isStaff, create: isEditor, update: isEditor, delete: isEditor },
@@ -69,6 +70,7 @@ export const Glossary: CollectionConfig = {
     useAsTitle: 'term',
     defaultColumns: ['term', 'kk', 'doNotTranslate'],
     group: 'Конвейер',
+    hidden: ({ user }) => user?.role === 'author',
     description: 'Как ИИ должен переводить IT-термины. Соблюдается при написании и проверке статей.',
   },
   access: { read: isStaff, create: isEditor, update: isEditor, delete: isEditor },
@@ -83,7 +85,7 @@ export const Glossary: CollectionConfig = {
 export const Media: CollectionConfig = {
   slug: 'media',
   labels: { singular: 'Файл', plural: 'Медиа' },
-  admin: { group: 'Контент' },
+  admin: { group: 'Контент', description: 'Фото для статей. Загрузите файл и коротко опишите, что на нём.' },
   access: { read: anyone, create: isStaff, update: isStaff, delete: isEditor },
   upload: {
     staticDir: 'media',

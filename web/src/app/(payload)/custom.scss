@@ -1,1 +1,38 @@
-/* Кастомизация внешнего вида админки */
+/* Кастомизация внешнего вида админки: главный экран редакции, кнопка публикации, удобство на телефоне */
+
+.qt-dash { margin-bottom: 32px; max-width: 760px; }
+.qt-dash a { text-decoration: none; color: inherit; }
+.qt-dash__hello { margin: 0 0 16px; font-size: 26px; }
+.qt-dash__new { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 16px; background: #1463ff; color: #fff !important; }
+.qt-dash__new:hover { background: #0d52dd; }
+.qt-dash__new b { display: block; font-size: 20px; }
+.qt-dash__new small { display: block; opacity: .85; font-size: 14px; margin-top: 2px; }
+.qt-dash__plus { flex: none; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, .18); display: grid; place-items: center; font-size: 28px; line-height: 1; }
+.qt-dash__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+.qt-dash__card { display: block; padding: 16px; border-radius: 14px; background: var(--theme-elevation-50); border: 1px solid var(--theme-elevation-100); }
+.qt-dash__card:hover { background: var(--theme-elevation-100); }
+.qt-dash__card b { display: block; font-size: 28px; line-height: 1.1; }
+.qt-dash__card span { display: block; font-size: 14px; opacity: .75; margin-top: 4px; }
+.qt-dash__card.is-warn { border-color: #f5a524; }
+.qt-dash__card.is-warn b { color: #d98500; }
+.qt-dash__queue { margin-top: 20px; }
+.qt-dash__queue h3 { margin: 0 0 6px; font-size: 16px; }
+.qt-dash__queue a { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--theme-elevation-100); font-weight: 500; }
+.qt-dash__queue a.qt-dash__more { color: #1463ff; border-bottom: 0; }
+.qt-dash__site { display: inline-block; margin-top: 16px; color: #1463ff !important; font-weight: 600; }
+
+.qt-pub { margin-bottom: 20px; }
+.qt-pub__btn { width: 100%; min-height: 52px; border: 0; border-radius: 12px; background: #1463ff; color: #fff; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
+.qt-pub__btn:hover { background: #0d52dd; }
+.qt-pub__btn--ghost { min-height: 44px; margin-top: 10px; background: transparent; color: var(--theme-text); border: 1px solid var(--theme-elevation-200); font-size: 15px; font-weight: 500; }
+.qt-pub__btn--ghost:hover { background: var(--theme-elevation-50); }
+.qt-pub__hint { margin: 8px 0 0; font-size: 13px; opacity: .7; }
+.qt-pub__ok { margin: 0; font-size: 17px; font-weight: 700; color: #17a34a; }
+.qt-pub__link { display: inline-block; margin-top: 6px; color: #1463ff; font-weight: 600; text-decoration: none; }
+
+@media (max-width: 768px) {
+  .qt-dash__grid { grid-template-columns: 1fr 1fr; }
+  .qt-dash__hello { font-size: 22px; }
+  /* поля ввода не меньше 16px — иначе iPhone приближает страницу при фокусе */
+  input, textarea, select, [contenteditable='true'] { font-size: 16px !important; }
+}

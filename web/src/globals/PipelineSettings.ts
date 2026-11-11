@@ -15,7 +15,7 @@ export const DEFAULT_GUIDANCE = `Приоритет: искусственный 
 export const PipelineSettings: GlobalConfig = {
   slug: 'pipeline-settings',
   label: 'Настройки конвейера',
-  admin: { group: 'Конвейер' },
+  admin: { hidden: ({ user }) => user?.role === 'author', group: 'Конвейер' },
   access: { read: isStaff, update: isEditor },
   fields: [
     {

@@ -11,6 +11,7 @@ export const Pages: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'showInFooter', 'order'],
     group: 'Контент',
+    hidden: ({ user }) => user?.role === 'author',
     description: 'Информационные страницы сайта. Адрес: /aqparat/<slug>',
     preview: (doc) => (doc?.slug ? `${process.env.NEXT_PUBLIC_SITE_URL || ''}/aqparat/${doc.slug}` : null),
   },

@@ -14,6 +14,7 @@ export const Users: CollectionConfig = {
     useAsTitle: 'email',
     defaultColumns: ['email', 'name', 'role'],
     group: 'Администрирование',
+    hidden: ({ user }) => user?.role !== 'admin',
   },
   access: {
     // Бот работает только через API и не входит в админку

@@ -6,7 +6,7 @@ import { revalidate } from '../lib/revalidate'
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
   label: 'Настройки сайта',
-  admin: { group: 'Администрирование' },
+  admin: { hidden: ({ user }) => user?.role === 'author', group: 'Администрирование' },
   access: { read: anyone, update: isEditor },
   hooks: { afterChange: [({ doc }) => (revalidate('settings'), doc)] },
   fields: [

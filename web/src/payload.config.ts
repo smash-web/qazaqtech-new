@@ -25,6 +25,10 @@ export default buildConfig({
     user: Users.slug,
     meta: { titleSuffix: ' — Редакция' },
     importMap: { baseDir: path.resolve(dirname) },
+    components: {
+      beforeDashboard: ['/components/admin/Dashboard#Dashboard'],
+      graphics: { Logo: '/components/admin/Brand#Logo', Icon: '/components/admin/Brand#Icon' },
+    },
   },
   collections: [Articles, Categories, Pages, Media, Sources, Glossary, Users],
   globals: [SiteSettings, PipelineSettings],
