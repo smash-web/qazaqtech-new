@@ -21,6 +21,13 @@
 .qt-dash__queue a.qt-dash__more { color: #1463ff; border-bottom: 0; }
 .qt-dash__site { display: inline-block; margin-top: 16px; color: #1463ff !important; font-weight: 600; }
 
+.qt-nav { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--theme-elevation-100); }
+.qt-nav__link { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: var(--theme-text); font-weight: 500; }
+.qt-nav__link:hover { background: var(--theme-elevation-100); }
+.qt-nav__link--new { background: #1463ff; color: #fff; font-weight: 700; justify-content: center; margin-bottom: 6px; }
+.qt-nav__link--new:hover { background: #0d52dd; }
+.qt-nav__badge { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #f5a524; color: #1a1300; font-size: 12px; font-weight: 700; text-align: center; }
+
 .qt-pub { margin-bottom: 20px; }
 .qt-pub__btn { width: 100%; min-height: 52px; border: 0; border-radius: 12px; background: #1463ff; color: #fff; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
 .qt-pub__btn:hover { background: #0d52dd; }

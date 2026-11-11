@@ -27,6 +27,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
     components: {
       beforeDashboard: ['/components/admin/Dashboard#Dashboard'],
+      beforeNavLinks: ['/components/admin/NavQuick#NavQuick'],
       graphics: { Logo: '/components/admin/Brand#Logo', Icon: '/components/admin/Brand#Icon' },
     },
   },
