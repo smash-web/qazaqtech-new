@@ -37,7 +37,8 @@ export const PipelineSettings: GlobalConfig = {
     {
       type: 'row',
       fields: [
-        { name: 'dailyQuota', label: 'Статей в день', type: 'number', defaultValue: 18, min: 1, max: 200, required: true },
+        { name: 'dailyQuota', label: 'Автопубликаций в день', type: 'number', defaultValue: 18, min: 1, max: 200, required: true },
+        { name: 'reviewQuota', label: 'Дополнительно на модерацию в день', type: 'number', defaultValue: 0, min: 0, max: 200, admin: { description: 'Следующие по важности новости: ИИ готовит черновик, публикует редактор.' } },
         { name: 'minScore', label: 'Мин. оценка важности (0–10)', type: 'number', defaultValue: 5.5, min: 0, max: 10, required: true },
         { name: 'publishFromHour', label: 'Публиковать с (час)', type: 'number', defaultValue: 7, min: 0, max: 23 },
         { name: 'publishToHour', label: 'Публиковать до (час)', type: 'number', defaultValue: 23, min: 1, max: 24 },

@@ -18,6 +18,7 @@ class CMSError(RuntimeError):
 class EditorialSettings:
     auto_publish: bool = False
     daily_quota: int = 18
+    review_quota: int = 0  # сколько статей в день дополнительно готовить на модерацию редактору
     min_score: float = 5.5
     publish_from_hour: int = 7
     publish_to_hour: int = 23
@@ -61,6 +62,7 @@ class CMSClient:
         return EditorialSettings(
             auto_publish=bool(g.get("autoPublish", False)),
             daily_quota=int(g.get("dailyQuota") or 18),
+            review_quota=int(g.get("reviewQuota") or 0),
             min_score=float(g.get("minScore") or 5.5),
             publish_from_hour=int(g.get("publishFromHour") if g.get("publishFromHour") is not None else 7),
             publish_to_hour=int(g.get("publishToHour") or 23),

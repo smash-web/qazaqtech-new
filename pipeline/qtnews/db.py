@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS run_log (
 NEW, SCORED, SELECTED, PUBLISHED, IN_REVIEW, SKIPPED, FAILED = (
     "new", "scored", "selected", "published", "review", "skipped", "failed",
 )
+EDITOR_QUEUE = "editor-queue"  # пометка в stories.error: статья подготовлена для редактора
 THIN = "thin"  # мало материала (источник за пейволом): ждём, пока о событии напишет открытое издание
 
 
@@ -231,9 +232,19 @@ class Database:
         self.execute(f"UPDATE stories SET {cols} WHERE id = ?", (*fields.values(), story_id))
 
     def count_published_since(self, since: str) -> int:
+        """Статьи основного потока за период (опубликованные и ушедшие на модерацию по замечаниям QA)."""
         rows = self.query(
-            "SELECT COUNT(*) AS n FROM stories WHERE status IN (?, ?) AND updated_at >= ?",
-            (PUBLISHED, IN_REVIEW, since),
+            "SELECT COUNT(*) AS n FROM stories WHERE status IN (?, ?) AND updated_at >= ? "
+            "AND COALESCE(error, '') <> ?",
+            (PUBLISHED, IN_REVIEW, since, EDITOR_QUEUE),
+        )
+        return int(rows[0]["n"])
+
+    def count_editor_queue_since(self, since: str) -> int:
+        """Статьи, подготовленные специально для редактора (сверх автопубликации)."""
+        rows = self.query(
+            "SELECT COUNT(*) AS n FROM stories WHERE status = ? AND updated_at >= ? AND error = ?",
+            (IN_REVIEW, since, EDITOR_QUEUE),
         )
         return int(rows[0]["n"])
 

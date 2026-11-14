@@ -120,6 +120,8 @@ class GeminiClient:
         self.min_interval_s = min_interval_s
         self._last_call = 0.0
         self.budget = _Budget()
+        self.used: dict[str, int] = {}       # сколько запросов выполнила каждая модель за запуск
+        self.unavailable: set[str] = set()   # модели, отказавшие в этом запуске
         self.session = requests.Session()
         self.session.headers.update({"x-goog-api-key": api_key, "content-type": "application/json"})
 
@@ -129,11 +131,17 @@ class GeminiClient:
         models = [m.strip() for m in model.split(",") if m.strip()]
         last: LLMError | None = None
         for i, m in enumerate(models):
+            is_last = i == len(models) - 1
+            if m in self.unavailable and not is_last:
+                continue  # в этом запуске модель уже отказала (перегрузка или дневной лимит) — не тратим время
             try:
-                return self._complete_one(m, system, prompt, max_tokens, temperature,
-                                          retries=self.max_retries if i == len(models) - 1 else 1)
+                text = self._complete_one(m, system, prompt, max_tokens, temperature,
+                                          retries=self.max_retries if is_last else 1)
+                self.used[m] = self.used.get(m, 0) + 1
+                return text
             except _Overloaded as exc:
-                log.warning("Модель %s перегружена, пробуем следующую", m)
+                log.warning("Модель %s перегружена или исчерпала лимит, пробуем следующую", m)
+                self.unavailable.add(m)
                 last = LLMError(str(exc))
         raise last or LLMError("Нет доступных моделей Gemini")
 

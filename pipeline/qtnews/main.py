@@ -112,6 +112,8 @@ def find_duplicate(cfg: Config, db: Database, llm: LLM | None, story_id: int, si
 
 
 # --- фото -----------------------------------------------------------------------------------------
+EDITOR_NOTE = ("Очередь редактора: статья подготовлена сверх автопубликации облегчённой моделью ИИ. "
+               "Проверьте текст и факты перед публикацией.")
 NO_IMAGE_NOTE = "Фото табылмады — статья ждёт обложку (конвейер повторит поиск сам)."
 
 
@@ -244,12 +246,13 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
     stats["cluster"] = cluster_new_items(db, since, cfg.cluster_threshold)
     stats["score"] = score_stories(db, llm, cfg.scorer_model, since, categories, settings.selection_guidance)
 
-    chosen, quota_now = select_for_run(
+    chosen, quota_now, review_now = select_for_run(
         db, quota=settings.daily_quota, min_score=settings.min_score, max_per_run=cfg.max_articles_per_run,
         tz=cfg.timezone, interval_min=cfg.process_interval_min, window_hours=cfg.story_window_hours,
         publish_from=settings.publish_from_hour, publish_to=settings.publish_to_hour, spare=3,
+        review_quota=settings.review_quota if llm is not None else 0,
     )
-    stats["selected"] = min(len(chosen), quota_now)
+    stats["selected"] = min(len(chosen), quota_now + review_now)
     if not chosen:
         db.log_run("process", stats)
         return stats
@@ -257,8 +260,10 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
     glossary = cms.glossary()
     cat_ids = {c["slug"]: c["id"] for c in categories}
     published = review = failed = duplicates = thin = 0
+    auto_done = editor_done = 0  # основной поток и «очередь редактора» (статьи сразу на модерацию)
     for n_story, story in enumerate(chosen):
-        if published + review >= quota_now:
+        for_editor = auto_done >= quota_now  # лучшие сюжеты — в основной поток, следующие — редактору
+        if for_editor and editor_done >= review_now:
             # Запасные кандидаты не понадобились — возвращаем их в общий пул
             with db.tx():
                 for rest in chosen[n_story:]:
@@ -296,10 +301,13 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
                 draft = untranslated_draft(materials, story.category)
                 go_live = False
             else:
-                draft = write_article(llm, cfg.writer_model, materials, glossary=glossary, categories=categories,
+                model = (cfg.editor_writer_model or cfg.writer_model) if for_editor else cfg.writer_model
+                draft = write_article(llm, model, materials, glossary=glossary, categories=categories,
                                       style_guide=settings.style_guide, suggested_category=story.category,
                                       qa_model=cfg.qa_model or None)
-                go_live = settings.auto_publish and draft.qa_ok
+                go_live = settings.auto_publish and draft.qa_ok and not for_editor
+                if for_editor:
+                    draft.qa_issues.insert(0, EDITOR_NOTE)
             slug = slugify(draft.title)
             if cms.slug_exists(slug):
                 slug = f"{slug}-{story.id}"
@@ -332,9 +340,11 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
             })
             with db.tx():
                 db.update_story(story.id, status=dbm.PUBLISHED if go_live else dbm.IN_REVIEW,
-                                article_id=str(doc.get("id")), error=None)
+                                article_id=str(doc.get("id")), error=dbm.EDITOR_QUEUE if for_editor else None)
             published += go_live
             review += not go_live
+            editor_done += for_editor
+            auto_done += not for_editor
             log.info("Статья %s: %s (%s)", "опубликована" if go_live else "на модерации", draft.title, doc.get("id"))
         except DeadlineExceeded as exc:
             # Не ошибка сюжета: время запуска вышло. Сюжет остаётся SELECTED и будет взят следующим запуском.
@@ -347,7 +357,7 @@ def process(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, fetcher:
             with db.tx():
                 db.update_story(story.id, status=dbm.FAILED, error=str(exc)[:1000], attempts=story.attempts + 1)
     stats.update({"published": published, "review": review, "failed": failed, "duplicates": duplicates,
-                  "thin": thin})
+                  "thin": thin, "editor_queue": editor_done, "models": dict(getattr(llm, "used", {}) or {})})
     db.log_run("process", stats)
     log.info("Обработка: %s", stats)
     return stats
@@ -363,7 +373,8 @@ def make_llm(cfg: Config) -> tuple[LLM | None, Config]:
                  cfg.gemini_scorer_model)
         return GeminiClient(cfg.gemini_api_key), replace(
             cfg, writer_model=cfg.gemini_writer_model, qa_model=cfg.gemini_qa_model,
-            scorer_model=cfg.gemini_scorer_model)
+            scorer_model=cfg.gemini_scorer_model,
+            editor_writer_model=cfg.editor_writer_model or cfg.gemini_qa_model)
     log.warning("Нет ключа ИИ — режим без ИИ: черновики с исходниками уходят на модерацию")
     return None, cfg
 

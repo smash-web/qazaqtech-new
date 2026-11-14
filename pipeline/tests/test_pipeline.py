@@ -564,3 +564,37 @@ def test_failed_qa_does_not_reach_moderation(db):
     stats = process(Config(database_url="sqlite:///:memory:"), db, cms, llm, None)
     assert not cms.created and stats["failed"] == 1 and stats["review"] == 0
     assert db.stories_by_status([dbm.FAILED], "0")[0].attempts == 1
+
+
+# --- очередь редактора ---------------------------------------------------------------------
+def test_editor_queue_gets_next_best_story_on_light_model(db, monkeypatch):
+    import qtnews.selection as sel
+
+    # темп: 1 статья в основной поток и 1 редактору за этот запуск
+    monkeypatch.setattr(sel, "slots_for_this_run", lambda **kw: 1)
+    add(db, "verge", "OpenAI launches reasoning model o5", "OpenAI launched o5. " * 80)
+    add(db, "ars", "Apple unveils new MacBook Pro with M6 chip", "Apple unveiled a new MacBook Pro. " * 80)
+
+    def scorer(kw):
+        ids = [int(x.split(";")[0]) for x in kw["prompt"].split("id=")[1:]]
+        return json.dumps({"stories": [{"id": i, "score": 9 - n, "category": "ai", "reason": "x"}
+                                       for n, i in enumerate(ids)]})
+
+    ok = json.dumps({"ok": True, "issues": [], "article": ARTICLE})
+    llm = FakeLLM([scorer, json.dumps(ARTICLE), ok, json.dumps({**ARTICLE, "title": "Apple MacBook Pro M6"}),
+                   json.dumps({"ok": True, "issues": [], "article": {**ARTICLE, "title": "Apple MacBook Pro M6"}})])
+
+    class CMS(MediaCMS):
+        def settings(self):
+            s = super().settings()
+            s.review_quota = 5
+            return s
+
+    cms = CMS(True)
+    cfg = Config(database_url="sqlite:///:memory:", writer_model="big", editor_writer_model="light")
+    stats = process(cfg, db, cms, llm, None)
+    assert [a["status"] for a in cms.created] == ["published", "review"]
+    assert "Очередь редактора" in cms.created[1]["qaNotes"] and stats["editor_queue"] == 1
+    models = [c["model"] for c in llm.prompts]
+    assert models[1] == "big" and "light" in models[3:]
+    assert db.count_editor_queue_since("0") == 1 and db.count_published_since("0") == 1
