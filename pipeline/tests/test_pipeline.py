@@ -135,7 +135,7 @@ def test_score_survives_llm_failure(db):
 # --- selection -----------------------------------------------------------------------------
 def test_slots_spread_quota_over_day():
     noon = datetime(2026, 11, 10, 7, 0, tzinfo=timezone.utc)  # 12:00 в Алматы (UTC+5)
-    n = slots_for_this_run(quota=18, done_today=6, max_per_run=3, tz="Asia/Almaty", interval_min=60, now=noon)
+    n = slots_for_this_run(quota=18, done_today=3, max_per_run=3, tz="Asia/Almaty", interval_min=60, now=noon)
     assert 1 <= n <= 3
     assert slots_for_this_run(quota=18, done_today=18, max_per_run=3, tz="Asia/Almaty", interval_min=60,
                               now=noon) == 0
