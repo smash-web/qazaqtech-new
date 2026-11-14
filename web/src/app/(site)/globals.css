@@ -37,7 +37,8 @@ img { max-width: 100%; display: block; }
 .topbar a:hover { color: #fff; }
 
 /* ---------- header ---------- */
-.header { background: var(--bg); position: relative; z-index: 20; box-shadow: 0 1px 0 var(--line); }
+/* шапка закреплена: тёмная полоса с датой (36px) уезжает, логотип и меню остаются на экране */
+.header { background: var(--bg); position: sticky; top: -36px; z-index: 40; box-shadow: 0 1px 0 var(--line); }
 .header .topbar { position: relative; }
 .header__main { display: flex; align-items: center; gap: 18px; padding-top: 14px; padding-bottom: 12px; }
 .logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: var(--fg); }

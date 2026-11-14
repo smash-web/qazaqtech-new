@@ -15,6 +15,7 @@ export async function Header() {
   const infoPages = pgs.filter((p) => p.showInFooter !== false).map((p) => ({ href: `/aqparat/${p.slug}`, label: p.title }))
 
   return (
+    <>
     <header className="header">
       <div className="topbar">
         <div className="container topbar__inner">
@@ -43,6 +44,7 @@ export async function Header() {
         </div>
       </nav>
 
+    </header>
       {!!latest.docs.length && (
         <div className="ticker" aria-label="Соңғы тақырыптар">
           <div className="container ticker__inner">
@@ -55,6 +57,6 @@ export async function Header() {
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }
