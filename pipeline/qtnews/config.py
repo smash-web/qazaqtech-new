@@ -50,7 +50,7 @@ class Config:
     min_material_chars: int = field(default_factory=lambda: int(_env("MIN_MATERIAL_CHARS", "1200")))
     require_image: bool = field(default_factory=lambda: _env("REQUIRE_IMAGE", "true").lower() == "true")
     duplicate_threshold: float = field(default_factory=lambda: float(_env("DUPLICATE_THRESHOLD", "0.45")))
-    user_agent: str = field(default_factory=lambda: _env("USER_AGENT", "QazaqTechNewsBot/1.0 (+https://example.kz/bot)"))
+    user_agent: str = field(default_factory=lambda: _env("USER_AGENT", "TechTalqNewsBot/1.0 (+https://techtalq.kz)"))
 
 
 def load_dotenv(path: str = ".env") -> None:

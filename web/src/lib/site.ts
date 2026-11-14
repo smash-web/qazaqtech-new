@@ -1,5 +1,5 @@
 export const SITE = {
-  name: process.env.NEXT_PUBLIC_SITE_NAME || 'QazaqTech',
+  name: process.env.NEXT_PUBLIC_SITE_NAME || 'TechTalq',
   tagline: 'Әлемдік технология жаңалықтары қазақ тілінде',
   url: (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, ''),
   locale: 'kk_KZ',

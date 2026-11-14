@@ -73,8 +73,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1, display: 'flex' }}>
-            <span style={{ color: accent }}>Qazaq</span>
             <span>Tech</span>
+            <span style={{ color: accent }}>Talq</span>
           </div>
           <div style={{ fontSize: 24, fontWeight: 500, padding: '8px 20px', borderRadius: 9999,
             backgroundColor: `${accent}26`, color: accent, border: `1px solid ${accent}66`, display: 'flex' }}>

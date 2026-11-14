@@ -30,8 +30,8 @@ export async function Header() {
       <div className="container header__main">
         <MobileMenu sections={sections} pages={infoPages} />
         <Link href="/" className="logo" aria-label={`${SITE.name} — басты бет`}>
-          <span className="logo__mark" aria-hidden="true">Q</span>
-          <span className="logo__text"><span className="logo__accent">Qazaq</span>Tech</span>
+          <span className="logo__mark" aria-hidden="true">T</span>
+          <span className="logo__text">Tech<span className="logo__accent">Talq</span></span>
         </Link>
         <span className="header__tagline">{SITE.tagline}</span>
         <SearchBox />

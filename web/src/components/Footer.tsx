@@ -11,8 +11,8 @@ export async function Footer() {
       <div className="container footer__grid">
         <div className="footer__brand">
           <Link href="/" className="logo logo--footer">
-            <span className="logo__mark" aria-hidden="true">Q</span>
-            <span className="logo__text"><span className="logo__accent">Qazaq</span>Tech</span>
+            <span className="logo__mark" aria-hidden="true">T</span>
+            <span className="logo__text">Tech<span className="logo__accent">Talq</span></span>
           </Link>
           <p>{settings?.about || SITE.tagline}</p>
           <SocialLinks social={settings?.social} className="footer__social" />
