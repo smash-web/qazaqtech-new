@@ -55,7 +55,9 @@ export default buildConfig({
     vercelBlobStorage({
       enabled: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
       token: process.env.BLOB_READ_WRITE_TOKEN || '',
-      collections: { media: true },
+      // Картинки отдаются напрямую из Blob (CDN), а не через /api/media/file: иначе каждая картинка —
+      // отдельный вызов функции со своим подключением к БД, и страница с 25 фото исчерпывала лимит соединений.
+      collections: { media: { disablePayloadAccessControl: true } },
       clientUploads: true, // загрузка из браузера напрямую в Blob, минуя лимит 4.5 МБ функций
       addRandomSuffix: true,
     }),
