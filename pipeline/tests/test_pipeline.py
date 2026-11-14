@@ -144,6 +144,17 @@ def test_slots_spread_quota_over_day():
                               now=night) == 0
 
 
+def test_slots_pace_evenly_through_the_day():
+    at = lambda h, m=0: datetime(2026, 11, 10, h - 5, m, tzinfo=timezone.utc)  # noqa: E731 — время Алматы
+    kw = dict(quota=12, max_per_run=2, tz="Asia/Almaty", interval_min=30)
+    assert slots_for_this_run(done_today=0, now=at(7, 3), **kw) == 1      # первая статья сразу утром
+    assert slots_for_this_run(done_today=1, now=at(7, 33), **kw) == 0     # следующая — не раньше чем через 80 минут
+    assert slots_for_this_run(done_today=1, now=at(8, 33), **kw) == 1
+    assert slots_for_this_run(done_today=6, now=at(13, 3), **kw) == 0     # к 13:00 вышла половина, а не вся квота
+    assert slots_for_this_run(done_today=3, now=at(15, 3), **kw) == 2     # отстали — догоняем, но не больше 2 за запуск
+    assert slots_for_this_run(done_today=11, now=at(22, 33), **kw) == 1   # последняя статья выходит вечером
+
+
 def test_pick_diversifies_categories():
     from qtnews.db import Story
     mk = lambda i, sc, c: Story(i, "t", "", dbm.SCORED, 0, None, sc, c, None, None, 0)  # noqa: E731

@@ -28,10 +28,13 @@ def slots_for_this_run(*, quota: int, done_today: int, max_per_run: int, tz: str
     local = now.astimezone(ZoneInfo(tz))
     if not (publish_from <= local.hour < publish_to):
         return 0
-    end = datetime.combine(local.date(), time(0), tzinfo=ZoneInfo(tz)) + timedelta(hours=publish_to)
-    minutes_left = max(0.0, (end - local).total_seconds() / 60)
-    runs_left = max(1, math.floor(minutes_left / max(1, interval_min)))
-    return max(0, min(max_per_run, remaining, math.ceil(remaining / runs_left)))
+    # Равномерный темп: к текущему моменту должна выйти доля квоты, равная прошедшей доле окна публикаций.
+    # (Раньше выпускалось по статье в каждый запуск, и дневная квота заканчивалась к середине дня.)
+    start = datetime.combine(local.date(), time(0), tzinfo=ZoneInfo(tz)) + timedelta(hours=publish_from)
+    window_min = max(1.0, (publish_to - publish_from) * 60)
+    elapsed_min = max(0.0, (local - start).total_seconds() / 60)
+    due_by_now = min(quota, math.ceil(quota * elapsed_min / window_min))
+    return max(0, min(max_per_run, remaining, due_by_now - done_today))
 
 
 # Компании и их «маркеры»: по ним определяем, о ком сюжет, чтобы лента не превращалась в ленту одной компании.
