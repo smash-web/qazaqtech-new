@@ -36,7 +36,14 @@ export default buildConfig({
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   db: postgresAdapter({
-    pool: { connectionString: process.env.DATABASE_URI || '', max: Number(process.env.DB_POOL_MAX || 5) },
+    // Простаивающие экземпляры функций быстро отпускают соединения: у пулера Supabase лимит 200 клиентов,
+    // и при частых деплоях или обходе сайта роботами он исчерпывался (ошибка EMAXCONN).
+    pool: {
+      connectionString: process.env.DATABASE_URI || '',
+      max: Number(process.env.DB_POOL_MAX || 5),
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 10_000,
+    },
     // Отдельная схема: таблицы CMS не видны через публичный REST API Supabase
     schemaName: process.env.PAYLOAD_DB_SCHEMA || 'public',
     // В dev схема синхронизируется автоматически; в проде — только миграции (npm run payload migrate)
