@@ -20,7 +20,7 @@ export const Articles: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     hideAPIURL: true,
-    defaultColumns: ['title', 'status', 'category', 'publishedAt', 'views'],
+    defaultColumns: ['title', 'status', 'publishedBy', 'publishedAt', 'views'],
     listSearchableFields: ['title', 'excerpt'],
     group: 'Контент',
     description: 'Новости сайта. Статьи конвейера со статусом «На модерации» ждут вашей проверки.',
@@ -36,9 +36,16 @@ export const Articles: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      ({ data, originalDoc }) => {
+      ({ data, originalDoc, req }) => {
         if (data.status === 'published' && !data.publishedAt && !originalDoc?.publishedAt) {
           data.publishedAt = new Date().toISOString()
+        }
+        // Кто опубликовал: фиксируется в момент перехода в «Опубликовано»
+        if (data.status === 'published' && originalDoc?.status !== 'published') {
+          const u = req.user as { role?: string; name?: string | null; email?: string } | null
+          if (u) data.publishedBy = u.role === 'bot' ? 'ИИ-конвейер' : u.name || u.email || ''
+        } else if (originalDoc) {
+          data.publishedBy = originalDoc.publishedBy // вручную не меняется
         }
         return data
       },
@@ -115,6 +122,7 @@ export const Articles: CollectionConfig = {
       ],
     },
     { name: 'publishedAt', label: 'Дата публикации', type: 'date', index: true, admin: { position: 'sidebar', description: 'Можно не трогать: поставится сама в момент публикации.', date: { pickerAppearance: 'dayAndTime' } } },
+    { name: 'publishedBy', label: 'Опубликовал', type: 'text', admin: { position: 'sidebar', readOnly: true, condition: (data) => Boolean(data?.publishedBy) } },
     { name: 'qaNotes', label: 'Замечания ИИ-проверки', type: 'textarea', admin: { position: 'sidebar', readOnly: true, condition: (data) => Boolean(data?.qaNotes) } },
     { name: 'views', label: 'Просмотры', type: 'number', defaultValue: 0, access: { update: () => false }, admin: { position: 'sidebar', readOnly: true } },
     {
