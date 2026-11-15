@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { articleBySlug } from '@/lib/cms'
-import { CATEGORY_THEME, DEFAULT_THEME } from '@/lib/cover'
+import { COVER_THEME } from '@/lib/cover'
 import { SITE } from '@/lib/site'
 import { asCategory } from '@/lib/types'
 
@@ -10,13 +10,13 @@ const H = 675
 
 const fontCache = new Map<string, Promise<ArrayBuffer | null>>()
 
-/** Шрифт Noto Sans с поддержкой казахских букв; Google Fonts отдаёт только нужные глифы (параметр text) */
-function loadFont(weight: number, text: string): Promise<ArrayBuffer | null> {
-  const key = `${weight}:${text}`
+/** Шрифт из Google Fonts только с нужными глифами (параметр text): Inter — с казахскими буквами, Space Grotesk — логотип */
+function loadFont(family: string, weight: number, text: string): Promise<ArrayBuffer | null> {
+  const key = `${family}:${weight}:${text}`
   if (!fontCache.has(key)) {
     fontCache.set(key, (async () => {
       try {
-        const url = `https://fonts.googleapis.com/css2?family=Noto+Sans:wght@${weight}&text=${encodeURIComponent(text)}`
+        const url = `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, '+')}:wght@${weight}&text=${encodeURIComponent(text)}`
         const css = await (await fetch(url)).text()
         const src = css.match(/src: url\((.+?)\) format\('(opentype|truetype)'\)/)
         if (!src) return null
@@ -44,55 +44,63 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   if (!article) return new Response('Not found', { status: 404 })
 
   const cat = asCategory(article.category)
-  const [from, to, accent] = CATEGORY_THEME[cat?.slug || ''] || DEFAULT_THEME
+  const { ink, sky, gold } = COVER_THEME
   const title = article.title.length > 140 ? `${article.title.slice(0, 137)}…` : article.title
   const sources = Array.from(new Set((article.sources || []).map((s) => s.name))).slice(0, 3).join(' · ')
-  const label = cat?.name || 'Технология'
-  const allText = `${SITE.name}${label}${title}${sources}${SITE.url.replace(/^https?:\/\//, '')}0123456789·…`
+  const label = (cat?.name || 'Технология').toUpperCase()
+  const host = SITE.url.replace(/^https?:\/\//, '')
+  const allText = `${label}${title}${sources}${host}0123456789·…`
 
-  const [bold, regular] = await Promise.all([loadFont(800, allText), loadFont(500, allText)])
+  const [bold, regular, logo] = await Promise.all([
+    loadFont('Inter', 800, allText), loadFont('Inter', 500, allText), loadFont('Space Grotesk', 700, 'TechTalQ'),
+  ])
   const fonts = [
-    bold && { name: 'Noto Sans', data: bold, weight: 800 as const, style: 'normal' as const },
-    regular && { name: 'Noto Sans', data: regular, weight: 500 as const, style: 'normal' as const },
-  ].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 800 | 500; style: 'normal' }[]
+    bold && { name: 'Inter', data: bold, weight: 800 as const, style: 'normal' as const },
+    regular && { name: 'Inter', data: regular, weight: 500 as const, style: 'normal' as const },
+    logo && { name: 'Space Grotesk', data: logo, weight: 700 as const, style: 'normal' as const },
+  ].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 800 | 700 | 500; style: 'normal' }[]
 
   return new ImageResponse(
     (
       <div
         style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          padding: '64px 72px', color: '#fff', fontFamily: 'Noto Sans',
-          backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`, position: 'relative',
+          padding: '64px 72px', color: '#fff', fontFamily: 'Inter', backgroundColor: ink, position: 'relative',
         }}
       >
-        {/* декоративная сетка и круг */}
-        <div style={{ position: 'absolute', right: -160, top: -160, width: 560, height: 560, borderRadius: 9999,
-          border: `2px solid ${accent}33`, display: 'flex' }} />
-        <div style={{ position: 'absolute', right: -60, top: -60, width: 360, height: 360, borderRadius: 9999,
-          backgroundColor: `${accent}1a`, display: 'flex' }} />
+        {/* крупное кольцо знака Q в углу и точка-сигнал */}
+        <div style={{ position: 'absolute', right: -150, top: -170, width: 520, height: 520, borderRadius: 9999,
+          border: `86px solid ${sky}24`, display: 'flex' }} />
+        <div style={{ position: 'absolute', right: 86, top: 66, width: 48, height: 48, borderRadius: 9999,
+          backgroundColor: sky, display: 'flex' }} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: -1, display: 'flex' }}>
-            <span>Tech</span>
-            <span style={{ color: accent }}>Talq</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+          <svg width="52" height="52" viewBox="0 0 64 64" fill="none">
+            <circle cx="27" cy="27" r="20" stroke="#fff" strokeWidth="9" />
+            <circle cx="27" cy="27" r="4.2" fill={sky} />
+            <path d="M39.5 39.5l15 15" stroke={gold} strokeWidth="8" strokeLinecap="round" />
+          </svg>
+          <div style={{ fontFamily: 'Space Grotesk', fontSize: 40, fontWeight: 700, letterSpacing: -1, display: 'flex' }}>
+            <span>TechTal</span>
+            <span style={{ color: sky }}>Q</span>
           </div>
-          <div style={{ fontSize: 24, fontWeight: 500, padding: '8px 20px', borderRadius: 9999,
-            backgroundColor: `${accent}26`, color: accent, border: `1px solid ${accent}66`, display: 'flex' }}>
+          <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2.5, padding: '9px 16px', borderRadius: 8,
+            backgroundColor: sky, color: ink, display: 'flex', marginLeft: 8 }}>
             {label}
           </div>
         </div>
 
-        <div style={{ fontSize: titleSize(title), fontWeight: 800, lineHeight: 1.15, letterSpacing: -1.5,
+        <div style={{ fontSize: titleSize(title), fontWeight: 800, lineHeight: 1.14, letterSpacing: -1.5,
           maxWidth: 1040, display: 'flex' }}>
           {title}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 24,
-          fontWeight: 500, color: '#ffffffb3' }}>
+          fontWeight: 500, color: '#9FB0CC' }}>
           <div style={{ display: 'flex' }}>{sources}</div>
-          <div style={{ display: 'flex' }}>{SITE.url.replace(/^https?:\/\//, '')}</div>
+          <div style={{ display: 'flex' }}>{host}</div>
         </div>
-        <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 8, backgroundColor: accent,
+        <div style={{ position: 'absolute', left: 72, bottom: 0, width: 120, height: 10, backgroundColor: gold,
           display: 'flex' }} />
       </div>
     ),

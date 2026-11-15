@@ -110,3 +110,11 @@
 - `author` — создаёт и правит статьи, загружает фото; не удаляет.
 - `bot` — только API.
 - Новое значение роли в проде добавляется вручную: `ALTER TYPE cms.enum_users_role ADD VALUE '...'`.
+
+## Брендбук TechTalQ (ноябрь 2026)
+
+- Цвета: Ink `#0B1B3A` (текст, тёмные блоки), Sky `#00AFCA` (акцент, графика), Gold `#FFC72C` (метки, CTA), Paper `#F5F7FA` (фон), Deep `#007A99` (ссылки и мелкий текст — Sky на белом не использовать).
+- Шрифты: Inter (текст и казахские заголовки, `next/font`), Space Grotesk Bold (логотип; кириллицы в нём нет).
+- Логотип: `web/src/components/Logo.tsx` (знак Q: кольцо + точка Sky + диагональ Gold), `app/icon.svg`, админка — `components/admin/Brand.tsx`.
+- Переменные — в `app/(site)/globals.css`; автообложки (`app/cover`) — фон Ink, метка Sky, полоса Gold.
+- Название пишется TechTalQ (заглавная Q), слоган — «Технология қазақша».

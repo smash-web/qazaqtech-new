@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { categories, pages, siteSettings } from '@/lib/cms'
 import { SITE } from '@/lib/site'
+import { Logo } from './Logo'
 import { SocialLinks } from './SocialLinks'
 
 export async function Footer() {
@@ -11,8 +12,7 @@ export async function Footer() {
       <div className="container footer__grid">
         <div className="footer__brand">
           <Link href="/" className="logo logo--footer">
-            <span className="logo__mark" aria-hidden="true">T</span>
-            <span className="logo__text">Tech<span className="logo__accent">Talq</span></span>
+            <Logo />
           </Link>
           <p>{settings?.about || SITE.tagline}</p>
           <SocialLinks social={settings?.social} className="footer__social" />

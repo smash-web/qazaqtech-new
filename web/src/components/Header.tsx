@@ -4,6 +4,7 @@ import { formatToday, SITE } from '@/lib/site'
 import { MobileMenu } from './MobileMenu'
 import { SearchBox } from './SearchBox'
 import { NavLinks } from './NavLinks'
+import { Logo } from './Logo'
 import { SocialLinks } from './SocialLinks'
 
 export async function Header() {
@@ -31,8 +32,7 @@ export async function Header() {
       <div className="container header__main">
         <MobileMenu sections={sections} pages={infoPages} />
         <Link href="/" className="logo" aria-label={`${SITE.name} — басты бет`}>
-          <span className="logo__mark" aria-hidden="true">T</span>
-          <span className="logo__text">Tech<span className="logo__accent">Talq</span></span>
+          <Logo />
         </Link>
         <span className="header__tagline">{SITE.tagline}</span>
         <SearchBox />
