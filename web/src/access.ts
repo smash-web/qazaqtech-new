@@ -30,7 +30,7 @@ export const anyone: Access = () => true
 
 /** Для admin.hidden: раздел виден только перечисленным ролям */
 export const hiddenUnless = (...roles: Role[]) =>
-  ({ user }: { user?: { role?: string | null } | null }): boolean => !roles.includes((user?.role || '') as Role)
+  ({ user }: { user: unknown }): boolean => !roles.includes(((user as { role?: string } | null)?.role || '') as Role)
 
 /** Публика видит только опубликованное, редакция — всё */
 export const publishedOrStaff: Access = ({ req }) => {

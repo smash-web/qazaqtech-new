@@ -123,7 +123,7 @@ export const Articles: CollectionConfig = {
       admin: {
         position: 'sidebar',
         initCollapsed: true,
-        condition: (_data, _sibling, { user }) => user?.role === 'developer',
+        condition: (_data, _sibling, { user }) => (user as { role?: string } | null)?.role === 'developer',
       },
       fields: [
         {
