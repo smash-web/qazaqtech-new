@@ -122,7 +122,7 @@ export const Articles: CollectionConfig = {
       ],
     },
     { name: 'publishedAt', label: 'Дата публикации', type: 'date', index: true, admin: { position: 'sidebar', description: 'Можно не трогать: поставится сама в момент публикации.', date: { pickerAppearance: 'dayAndTime' } } },
-    { name: 'publishedBy', label: 'Опубликовал', type: 'text', admin: { position: 'sidebar', readOnly: true, condition: (data) => Boolean(data?.publishedBy) } },
+    { name: 'publishedBy', label: 'Опубликовал', type: 'text', access: { read: ({ req }) => Boolean(req.user) }, admin: { position: 'sidebar', readOnly: true, condition: (data) => Boolean(data?.publishedBy) } },
     { name: 'qaNotes', label: 'Замечания ИИ-проверки', type: 'textarea', admin: { position: 'sidebar', readOnly: true, condition: (data) => Boolean(data?.qaNotes) } },
     { name: 'views', label: 'Просмотры', type: 'number', defaultValue: 0, access: { update: () => false }, admin: { position: 'sidebar', readOnly: true } },
     {
