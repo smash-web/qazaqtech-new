@@ -1,14 +1,14 @@
 import type { CollectionConfig } from 'payload'
-import { anyone, isEditor, isStaff } from '../access'
+import { anyone, hiddenUnless, isAdmin, isDeveloper, isEditor, isStaff } from '../access'
 import { revalidate } from '../lib/revalidate'
 import { slugify } from '../lib/slugify'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
   labels: { singular: 'Рубрика', plural: 'Рубрики' },
-  admin: { hidden: ({ user }) => user?.role === 'author', useAsTitle: 'name', defaultColumns: ['name', 'slug', 'order'], group: 'Контент' },
+  admin: { hidden: hiddenUnless('developer', 'admin'), useAsTitle: 'name', defaultColumns: ['name', 'slug', 'order'], group: 'Контент' },
   defaultSort: 'order',
-  access: { read: anyone, create: isEditor, update: isEditor, delete: isEditor },
+  access: { read: anyone, create: isAdmin, update: isAdmin, delete: isAdmin },
   hooks: {
     afterChange: [({ doc }) => (revalidate('categories', 'articles'), doc)],
     afterDelete: [({ doc }) => (revalidate('categories', 'articles'), doc)],
@@ -36,10 +36,10 @@ export const Sources: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'weight', 'active', 'feedUrl'],
     group: 'Конвейер',
-    hidden: ({ user }) => user?.role === 'author',
+    hidden: hiddenUnless('developer'),
     description: 'Мировые издания, из которых конвейер собирает новости (RSS/Atom).',
   },
-  access: { read: isStaff, create: isEditor, update: isEditor, delete: isEditor },
+  access: { read: isStaff, create: isDeveloper, update: isDeveloper, delete: isDeveloper },
   hooks: {
     afterChange: [({ doc }) => (revalidate('sources'), doc)],
     afterDelete: [({ doc }) => (revalidate('sources'), doc)],
@@ -70,7 +70,7 @@ export const Glossary: CollectionConfig = {
     useAsTitle: 'term',
     defaultColumns: ['term', 'kk', 'doNotTranslate'],
     group: 'Конвейер',
-    hidden: ({ user }) => user?.role === 'author',
+    hidden: hiddenUnless('developer', 'admin', 'editor'),
     description: 'Как ИИ должен переводить IT-термины. Соблюдается при написании и проверке статей.',
   },
   access: { read: isStaff, create: isEditor, update: isEditor, delete: isEditor },

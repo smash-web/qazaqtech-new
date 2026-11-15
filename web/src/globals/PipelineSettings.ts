@@ -1,5 +1,5 @@
 import type { GlobalConfig } from 'payload'
-import { isEditor, isStaff } from '../access'
+import { hiddenUnless, isAdmin, isStaff } from '../access'
 
 export const DEFAULT_STYLE_GUIDE = `- Пишем для IT-специалистов, студентов и предпринимателей Казахстана.
 - Тон нейтральный, информационный. Без кликбейта, восклицательных знаков и оценочных эпитетов.
@@ -15,8 +15,8 @@ export const DEFAULT_GUIDANCE = `Приоритет: искусственный 
 export const PipelineSettings: GlobalConfig = {
   slug: 'pipeline-settings',
   label: 'Настройки конвейера',
-  admin: { hidden: ({ user }) => user?.role === 'author', group: 'Конвейер' },
-  access: { read: isStaff, update: isEditor },
+  admin: { hidden: hiddenUnless('developer', 'admin'), group: 'Конвейер' },
+  access: { read: isStaff, update: isAdmin },
   fields: [
     {
       type: 'row',

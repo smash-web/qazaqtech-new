@@ -1,13 +1,13 @@
 import type { GlobalConfig } from 'payload'
-import { anyone, isEditor } from '../access'
+import { anyone, hiddenUnless, isAdmin } from '../access'
 import { revalidate } from '../lib/revalidate'
 
 /** Настройки сайта: описание, контакты, соцсети. Пустые поля на сайте не показываются. */
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
   label: 'Настройки сайта',
-  admin: { hidden: ({ user }) => user?.role === 'author', group: 'Администрирование' },
-  access: { read: anyone, update: isEditor },
+  admin: { hidden: hiddenUnless('developer', 'admin'), group: 'Администрирование' },
+  access: { read: anyone, update: isAdmin },
   hooks: { afterChange: [({ doc }) => (revalidate('settings'), doc)] },
   fields: [
     {

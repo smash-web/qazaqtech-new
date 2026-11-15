@@ -19,6 +19,7 @@ export const Articles: CollectionConfig = {
   labels: { singular: 'Статья', plural: 'Статьи' },
   admin: {
     useAsTitle: 'title',
+    hideAPIURL: true,
     defaultColumns: ['title', 'status', 'category', 'publishedAt', 'views'],
     listSearchableFields: ['title', 'excerpt'],
     group: 'Контент',
@@ -119,7 +120,11 @@ export const Articles: CollectionConfig = {
     {
       type: 'collapsible',
       label: 'Служебное',
-      admin: { position: 'sidebar', initCollapsed: true },
+      admin: {
+        position: 'sidebar',
+        initCollapsed: true,
+        condition: (_data, _sibling, { user }) => user?.role === 'developer',
+      },
       fields: [
         {
           name: 'slug',
