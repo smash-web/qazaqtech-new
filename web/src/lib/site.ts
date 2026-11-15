@@ -1,5 +1,5 @@
 export const SITE = {
-  name: process.env.NEXT_PUBLIC_SITE_NAME || 'TechTalQ',
+  name: 'TechTalQ', // написание закреплено брендбуком (заглавная Q)
   tagline: 'Технология қазақша',
   url: (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, ''),
   locale: 'kk_KZ',
