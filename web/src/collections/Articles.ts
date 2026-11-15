@@ -36,7 +36,14 @@ export const Articles: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      ({ data, originalDoc, req }) => {
+      ({ data, originalDoc, req, operation }) => {
+        // Стартовое число просмотров (временно): счётчик начинается со случайных 411–945.
+        // Настоящие просмотры = views − viewsBase.
+        if (operation === 'create') {
+          const base = 411 + Math.floor(Math.random() * 535)
+          data.viewsBase = base
+          data.views = base
+        }
         if (data.status === 'published' && !data.publishedAt && !originalDoc?.publishedAt) {
           data.publishedAt = new Date().toISOString()
         }
@@ -145,6 +152,7 @@ export const Articles: CollectionConfig = {
             beforeValidate: [({ value, data }) => (value ? slugify(String(value)) : slugify(String(data?.title || '')))],
           },
         },
+        { name: 'viewsBase', label: 'Стартовые просмотры', type: 'number', defaultValue: 0, admin: { readOnly: true, description: 'Настоящие просмотры = «Просмотры» минус это число.' } },
         { name: 'needsTranslation', label: 'Нужен перевод', type: 'checkbox', defaultValue: false, index: true, admin: { description: 'Черновик конвейера без ИИ: текст источников на языке оригинала' } },
         { name: 'aiGenerated', label: 'Подготовлено ИИ', type: 'checkbox', defaultValue: false },
         { name: 'importanceScore', label: 'Оценка важности (0–10)', type: 'number', admin: { readOnly: true } },
