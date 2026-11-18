@@ -92,7 +92,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
                 <path d="M39.5 39.5l15 15" stroke={gold} strokeWidth="8" strokeLinecap="round" />
               </svg>
               <div style={{ fontFamily: 'Space Grotesk', fontSize: 36, fontWeight: 700, display: 'flex' }}>
-                <span>TechTal<span style={{ color: sky }}>Q</span></span>
+                <span>TechTal</span><span style={{ color: sky, marginLeft: -9 }}>Q</span>{/* рендерер даёт лишний зазор после «l» */}
               </div>
             </div>
             <div style={{ fontSize: 26, fontWeight: 500, color: '#9FB0CC', display: 'flex' }}>{host}</div>
