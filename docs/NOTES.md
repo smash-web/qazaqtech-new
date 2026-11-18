@@ -118,3 +118,12 @@
 - Логотип: `web/src/components/Logo.tsx` (знак Q: кольцо + точка Sky + диагональ Gold), `app/icon.svg`, админка — `components/admin/Brand.tsx`.
 - Переменные — в `app/(site)/globals.css`; автообложки (`app/cover`) — фон Ink, метка Sky, полоса Gold.
 - Название пишется TechTalQ (заглавная Q), слоган — «Технология қазақша».
+
+## Instagram (ноябрь 2026)
+
+- Путь: Instagram API with Instagram Login (страница Facebook не нужна). Свой аккаунт — режим разработки приложения Meta, роль «Instagram Tester», без App Review.
+- Web: глобал `instagram-settings` (виден только разработчику; читает/пишет бот), кнопка «Подключить» → `/instagram/connect` → OAuth → `/instagram/callback` (долгий токен 60 дней сохраняется в глобал). Env web: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`. Redirect URI в Meta: `https://techtalq.kz/instagram/callback`.
+- Картинка поста: `/ig/<slug>` — 1080×1350 JPEG (Instagram принимает только JPEG).
+- Конвейер: `step=social` (`qtnews/social.py`), cron `qtnews-social` в :10 и :40. Не больше 1 поста за запуск, лимит в сутки и окно свежести — в глобале. Учёт — таблица `pipeline.social_posts`; статус `posting` не повторяется (защита от дублей), ошибки — до 3 попыток. Токен продлевается раз в 7 дней.
+- В подписи обязательна пометка об ИИ (закон РК об ИИ) + параметр `is_ai_generated`.
+- Таблица `cms.instagram_settings` создана вручную (push в проде выключен), владелец — роль qtnews.

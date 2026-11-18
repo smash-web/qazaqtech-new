@@ -47,6 +47,20 @@ CREATE TABLE IF NOT EXISTS stories (
 CREATE INDEX IF NOT EXISTS idx_stories_status ON stories(status);
 CREATE INDEX IF NOT EXISTS idx_stories_created ON stories(created_at);
 
+CREATE TABLE IF NOT EXISTS social_posts (
+    id {pk},
+    article_id TEXT NOT NULL,
+    network TEXT NOT NULL,
+    status TEXT NOT NULL,
+    media_id TEXT,
+    permalink TEXT,
+    error TEXT,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (article_id, network)
+);
+
 CREATE TABLE IF NOT EXISTS run_log (
     id {pk},
     started_at TEXT NOT NULL,
@@ -247,6 +261,32 @@ class Database:
             (IN_REVIEW, since, EDITOR_QUEUE),
         )
         return int(rows[0]["n"])
+
+    # --- публикации в соцсетях -----------------------------------------------------
+    def social_get(self, article_id: str, network: str) -> dict | None:
+        rows = self.query("SELECT * FROM social_posts WHERE article_id = ? AND network = ?", (str(article_id), network))
+        return rows[0] if rows else None
+
+    def social_save(self, article_id: str, network: str, status: str, *, media_id: str | None = None,
+                    permalink: str | None = None, error: str | None = None, attempt: bool = False) -> None:
+        now = utcnow()
+        with self.tx():
+            self.execute(
+                """INSERT INTO social_posts (article_id, network, status, media_id, permalink, error, attempts, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (article_id, network) DO UPDATE SET status = excluded.status,
+                     media_id = COALESCE(excluded.media_id, social_posts.media_id),
+                     permalink = COALESCE(excluded.permalink, social_posts.permalink),
+                     error = excluded.error,
+                     attempts = social_posts.attempts + ?, updated_at = excluded.updated_at""",
+                (str(article_id), network, status, media_id, permalink, error, 1 if attempt else 0, now, now,
+                 1 if attempt else 0),
+            )
+
+    def social_count_since(self, network: str, since: str) -> int:
+        rows = self.query("SELECT COUNT(*) AS n FROM social_posts WHERE network = ? AND status = 'posted' AND updated_at >= ?",
+                          (network, since))
+        return int(rows[0]["n"]) if rows else 0
 
     def log_run(self, kind: str, stats: dict) -> None:
         with self.tx():

@@ -130,3 +130,17 @@ class CMSClient:
             raise CMSError(f"CMS POST /media → {resp.status_code}: {resp.text[:400]}")
         data = resp.json()
         return data.get("doc", data)
+
+    # --- Instagram ----------------------------------------------------------------
+    def instagram_settings(self) -> dict:
+        return self._req("GET", "/globals/instagram-settings", params={"depth": 0})
+
+    def update_instagram_settings(self, data: dict) -> None:
+        self._req("POST", "/globals/instagram-settings", json=data)
+
+    def published_since(self, since_iso: str, limit: int = 50) -> list[dict]:
+        """Опубликованные статьи новее since_iso, от старых к новым (с рубрикой)."""
+        data = self._req("GET", "/articles", params={
+            "where[status][equals]": "published", "where[publishedAt][greater_than]": since_iso,
+            "sort": "publishedAt", "limit": limit, "depth": 1})
+        return data.get("docs", [])

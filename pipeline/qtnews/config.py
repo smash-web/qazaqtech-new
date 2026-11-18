@@ -52,6 +52,8 @@ class Config:
     editor_writer_model: str = field(default_factory=lambda: _env("EDITOR_WRITER_MODEL", ""))
     require_image: bool = field(default_factory=lambda: _env("REQUIRE_IMAGE", "true").lower() == "true")
     duplicate_threshold: float = field(default_factory=lambda: float(_env("DUPLICATE_THRESHOLD", "0.45")))
+    # Публичный адрес сайта: ссылки и картинки для соцсетей (CMS_URL может быть служебным адресом)
+    site_url: str = field(default_factory=lambda: _env("PUBLIC_SITE_URL", "https://techtalq.kz").rstrip("/"))
     user_agent: str = field(default_factory=lambda: _env("USER_AGENT", "TechTalqNewsBot/1.0 (+https://techtalq.kz)"))
 
 

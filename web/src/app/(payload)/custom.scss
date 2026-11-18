@@ -44,3 +44,12 @@
   /* поля ввода не меньше 16px — иначе iPhone приближает страницу при фокусе */
   input, textarea, select, [contenteditable='true'] { font-size: 16px !important; }
 }
+
+.qt-ig { margin-bottom: 24px; padding: 18px 20px; border-radius: 14px; background: var(--theme-elevation-50); border: 1px solid var(--theme-elevation-100); max-width: 760px; }
+.qt-ig__status { margin: 0 0 12px; font-size: 16px; }
+.qt-ig__status small { opacity: .75; font-size: 13px; }
+.qt-ig__status a { color: #007A99; text-decoration: none; }
+.qt-ig__ok { margin: 0 0 12px; color: #17a34a; font-weight: 600; }
+.qt-ig__err { margin: 0 0 12px; color: #d93025; font-weight: 600; }
+.qt-ig__btn { display: inline-block; padding: 11px 18px; border-radius: 10px; background: #FFC72C; color: #0B1B3A !important; font-weight: 700; text-decoration: none; }
+.qt-ig__btn:hover { background: #F2B91C; }
