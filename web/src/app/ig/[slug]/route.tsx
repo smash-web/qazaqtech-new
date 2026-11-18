@@ -42,12 +42,12 @@ function splitTitle(title: string): { main: string; tail: string } {
 }
 
 function titleSize(n: number) {
-  return n <= 45 ? 70 : n <= 70 ? 62 : n <= 95 ? 54 : n <= 120 ? 48 : 42
+  return n <= 45 ? 78 : n <= 70 ? 70 : n <= 95 ? 60 : n <= 120 ? 54 : 48
 }
 
 /** Подпись к фото: автор/лицензия без ссылки, коротко */
 function photoCredit(credit: string | null | undefined): string {
-  const c = (credit || '').split(' — ')[0].replace(/\s+/g, ' ').trim()
+  const c = (credit || '').split(' — ')[0].replace(/\s+/g, ' ').replace(/^(Сурет|Фото|Photo)\s*:\s*/i, '').trim()
   return c.length > 52 ? `${c.slice(0, 49)}…` : c
 }
 
