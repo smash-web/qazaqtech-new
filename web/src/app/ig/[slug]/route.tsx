@@ -116,7 +116,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
           </div>
           <div style={{ fontSize: size, fontWeight: 800, lineHeight: 1.12, letterSpacing: -1, marginTop: 26,
             display: 'flex', flexWrap: 'wrap' }}>
-            {main}{tail ? <span style={{ color: sky, marginLeft: size * 0.25 }}>{tail}</span> : null}
+            {[...main.split(' ').map((w) => ({ w, hi: false })), ...(tail ? tail.split(' ') : []).map((w) => ({ w, hi: true }))].map(
+              ({ w, hi }, i) => <span key={i} style={{ marginRight: size * 0.24, color: hi ? sky : '#fff' }}>{w}</span>,
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', marginTop: 34, gap: 18 }}>
             <div style={{ width: 64, height: 6, borderRadius: 3, backgroundColor: COVER_THEME.gold, display: 'flex' }} />
