@@ -89,8 +89,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         )}
 
         {/* затемнение сверху под логотип и снизу под заголовок */}
-        <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: 260, display: 'flex',
-          backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0.7), rgba(11,27,58,0))' }} />
+        <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: 300, display: 'flex',
+          backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0.9) 0%, rgba(11,27,58,0.6) 45%, rgba(11,27,58,0) 100%)' }} />
         <div style={{ position: 'absolute', left: 0, bottom: 0, width: W, height: 820, display: 'flex',
           backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0) 0%, rgba(11,27,58,0.82) 42%, rgba(11,27,58,0.97) 70%, #0B1B3A 100%)' }} />
 
