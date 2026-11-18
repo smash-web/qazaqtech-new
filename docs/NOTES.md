@@ -121,9 +121,12 @@
 
 ## Instagram (ноябрь 2026)
 
-- Путь: Instagram API with Instagram Login (страница Facebook не нужна). Свой аккаунт — режим разработки приложения Meta, роль «Instagram Tester», без App Review.
-- Web: глобал `instagram-settings` (виден только разработчику; читает/пишет бот), кнопка «Подключить» → `/instagram/connect` → OAuth → `/instagram/callback` (долгий токен 60 дней сохраняется в глобал). Env web: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`. Redirect URI в Meta: `https://techtalq.kz/instagram/callback`.
+- Путь: **Instagram API with Unified Login** — новые приложения Meta (с конца 2026) другого не предлагают. Приложение обязано принадлежать бизнес-портфолио; страница Facebook не нужна.
+- В Meta: сценарий «Управление сообщениями и контентом в Instagram» → API setup with Unified login → конфигурация (токен системного пользователя, срок «Никогда», разрешения instagram_basic + instagram_content_publish). Redirect URI: `https://techtalq.kz/instagram/callback`.
+- Env web: `META_APP_ID`, `META_APP_SECRET` (Настройки приложения → Основное), `META_CONFIG_ID` (ID конфигурации), опционально `META_GRAPH_VERSION` (по умолчанию v26.0).
+- Поток: `/instagram/connect` → facebook.com/{v}/dialog/oauth (client_id, config_id, override_default_response_type) → `/instagram/callback`: код → graph.facebook.com/oauth/access_token → debug_token (срок) → me/assigned_instagram_accounts → глобал `instagram-settings`.
+- Публикация: graph.facebook.com/{v}/{ig-id}/media → status_code → media_publish. graph.instagram.com этот токен не принимает.
 - Картинка поста: `/ig/<slug>` — 1080×1350 JPEG (Instagram принимает только JPEG).
-- Конвейер: `step=social` (`qtnews/social.py`), cron `qtnews-social` в :10 и :40. Не больше 1 поста за запуск, лимит в сутки и окно свежести — в глобале. Учёт — таблица `pipeline.social_posts`; статус `posting` не повторяется (защита от дублей), ошибки — до 3 попыток. Токен продлевается раз в 7 дней.
+- Конвейер: `step=social` (`qtnews/social.py`), cron `qtnews-social` в :10 и :40. 1 пост за запуск, лимит в сутки и окно свежести — в глобале. Учёт — `pipeline.social_posts`; статус `posting` не повторяется (защита от дублей), ошибки — до 3 попыток. Токен не продлевается; если у него есть срок — за 7 дней предупреждение в админке.
 - В подписи обязательна пометка об ИИ (закон РК об ИИ) + параметр `is_ai_generated`.
 - Таблица `cms.instagram_settings` создана вручную (push в проде выключен), владелец — роль qtnews.

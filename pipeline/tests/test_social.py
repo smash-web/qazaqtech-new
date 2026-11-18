@@ -35,11 +35,7 @@ class FakeCMS:
 
 class FakeIG:
     def __init__(self, fail_on=None):
-        self.posts, self.refreshed, self.fail_on = [], 0, fail_on
-
-    def refresh(self, token):
-        self.refreshed += 1
-        return token + "-new", 5184000
+        self.posts, self.fail_on = [], fail_on
 
     def create_image(self, ig_id, token, url, caption):
         if self.fail_on == "create":
@@ -120,9 +116,14 @@ def test_failure_is_retried_then_given_up(db):
     assert "bad image" in cms.settings["lastError"]
 
 
-def test_token_refreshed_weekly(db):
-    cms, ig = FakeCMS(settings(tokenUpdatedAt=(NOW - timedelta(days=8)).isoformat()), []), FakeIG()
-    post_to_instagram(Config(), db, cms, ig, now=NOW)
-    assert ig.refreshed == 1 and cms.settings["accessToken"] == "tok-new"
-    post_to_instagram(Config(), db, cms, ig, now=NOW + timedelta(hours=1))
-    assert ig.refreshed == 1
+def test_warns_before_token_expiry_and_keeps_posting(db):
+    cms = FakeCMS(settings(tokenExpiresAt=(NOW + timedelta(days=3)).isoformat()), [art(1)])
+    stats = post_to_instagram(Config(), db, cms, FakeIG(), now=NOW)
+    assert "token_expires" in stats and stats["posted"] == 1
+    assert cms.updates[0]["lastError"].startswith("Доступ к Instagram истекает")
+
+
+def test_never_expiring_token_has_no_warning(db):
+    cms = FakeCMS(settings(tokenExpiresAt=None), [art(1)])
+    stats = post_to_instagram(Config(), db, cms, FakeIG(), now=NOW)
+    assert "token_expires" not in stats

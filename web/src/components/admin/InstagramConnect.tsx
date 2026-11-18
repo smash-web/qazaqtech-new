@@ -4,7 +4,7 @@ import { useFormFields } from '@payloadcms/ui'
 
 const fmt = (v: unknown) => (typeof v === 'string' && v ? new Date(v).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' }) : '—')
 
-/** Статус подключения Instagram и кнопка «Подключить» (вход через сам Instagram — пароль сайт не видит). */
+/** Статус подключения Instagram и кнопка «Подключить» (вход в окне Meta — пароль сайт не видит). */
 export function InstagramConnect() {
   const f = useFormFields(([fields]) => ({
     username: fields.username?.value as string | undefined,
@@ -20,7 +20,7 @@ export function InstagramConnect() {
       {f.username ? (
         <p className="qt-ig__status">
           Подключён аккаунт <a href={`https://www.instagram.com/${f.username}/`} target="_blank" rel="noopener"><b>@{f.username}</b></a>
-          <br /><small>Доступ действует до {fmt(f.expires)} и продлевается автоматически. Последний пост: {fmt(f.lastPost)}.</small>
+          <br /><small>{f.expires ? `Доступ действует до ${fmt(f.expires)}.` : 'Доступ бессрочный.'} Последний пост: {fmt(f.lastPost)}.</small>
         </p>
       ) : (
         <p className="qt-ig__status">Instagram не подключён.</p>

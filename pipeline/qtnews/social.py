@@ -1,13 +1,15 @@
-"""Публикация новостей сайта в Instagram (Instagram API with Instagram Login).
+"""Публикация новостей сайта в Instagram (Instagram API with Unified Login, graph.facebook.com).
 
 Каждый запуск (раз в 30 минут) выкладывает не больше одного поста: самую раннюю из свежих
 опубликованных статей, которой ещё нет в Instagram. Картинку 1080×1350 JPEG рисует сайт
 (/ig/<slug>), подпись — анонс, ссылка на сайт, источники, пометка об ИИ и хештеги.
-Токен (60 дней) продлевается автоматически раз в неделю.
+Токен системного пользователя бизнес-портфолио обычно бессрочный; если у токена есть срок,
+за неделю до него в админке появляется просьба переподключить аккаунт.
 """
 from __future__ import annotations
 
 import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -21,9 +23,9 @@ from .db import Database
 log = logging.getLogger(__name__)
 
 NETWORK = "instagram"
-GRAPH = "https://graph.instagram.com"
+GRAPH = f"https://graph.facebook.com/{os.environ.get('META_GRAPH_VERSION', 'v26.0')}"
 MAX_ATTEMPTS = 3
-REFRESH_EVERY = timedelta(days=7)
+WARN_BEFORE_EXPIRY = timedelta(days=7)
 CAPTION_LIMIT = 2200
 
 # Хештег рубрики (по slug)
@@ -65,10 +67,6 @@ class InstagramClient:
             msg = err.get("error_user_msg") or err.get("message") or resp.text[:300]
             raise InstagramError(str(msg), err.get("code"))
         return data
-
-    def refresh(self, token: str) -> tuple[str, int]:
-        data = self._call("GET", "refresh_access_token", token, grant_type="ig_refresh_token")
-        return str(data["access_token"]), int(data.get("expires_in") or 60 * 24 * 3600)
 
     def create_image(self, ig_id: str, token: str, image_url: str, caption: str) -> str:
         try:
@@ -163,18 +161,13 @@ def post_to_instagram(cfg: Config, db: Database, cms: CMSClient, client: Instagr
         return stats
     client = client or InstagramClient(cfg.user_agent)
 
-    # Продление токена раз в неделю (долгий токен живёт 60 дней)
-    updated = _parse(s.get("tokenUpdatedAt"))
-    if not updated or now - updated > REFRESH_EVERY:
-        try:
-            token, expires_in = client.refresh(token)
-            cms.update_instagram_settings({
-                "accessToken": token, "tokenUpdatedAt": now.isoformat(),
-                "tokenExpiresAt": (now + timedelta(seconds=expires_in)).isoformat()})
-            stats["token_refreshed"] = True
-        except InstagramError as exc:
-            log.warning("Instagram: не удалось продлить токен: %s", exc)
-            stats["token_error"] = str(exc)[:200]
+    # Токен со сроком (не системного пользователя) — заранее просим переподключить
+    expires = _parse(s.get("tokenExpiresAt"))
+    if expires and expires - now < WARN_BEFORE_EXPIRY:
+        note = f"Доступ к Instagram истекает {expires:%d.%m.%Y} — нажмите «Переподключить Instagram»."
+        if s.get("lastError") != note:
+            cms.update_instagram_settings({"lastError": note})
+        stats["token_expires"] = expires.isoformat()
 
     limit = int(s.get("dailyLimit") or 20)
     if db.social_count_since(NETWORK, (now - timedelta(hours=24)).isoformat()) >= limit:
