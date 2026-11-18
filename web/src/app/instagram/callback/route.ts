@@ -15,10 +15,13 @@ export async function GET(req: Request) {
     return fail(`Meta: подключение отменено (${q.get('error_description') || q.get('error_reason') || q.get('error')})`)
   }
   const payload = await getCMS()
-  const { user } = await payload.auth({ headers: req.headers })
+  // Кто начал подключение — берём из подписанного state (его выдаёт только /instagram/connect разработчику).
+  // На сессию не полагаемся: после диалога Meta браузер может вернуться без cookie админки.
   const uid = readState(q.get('state'))
-  if (!user || !hasRole(user as never, 'developer') || !uid || String(user.id) !== uid) {
-    return fail('Подключение не подтверждено: войдите в админку как разработчик и нажмите «Подключить» ещё раз.')
+  if (!uid) return fail('Ссылка подключения устарела (действует 15 минут) — нажмите «Подключить Instagram» ещё раз.')
+  const starter = await payload.findByID({ collection: 'users', id: uid, overrideAccess: true, depth: 0 }).catch(() => null)
+  if (!starter || !hasRole(starter as never, 'developer')) {
+    return fail('Подключать Instagram может только разработчик.')
   }
   const code = q.get('code') || ''
   if (!code) return fail('Meta не вернула код подключения.')
