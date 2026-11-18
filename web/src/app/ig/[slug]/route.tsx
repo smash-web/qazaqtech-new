@@ -4,21 +4,16 @@ import { articleBySlug } from '@/lib/cms'
 import { COVER_THEME } from '@/lib/cover'
 import { loadFont } from '@/lib/ogFonts'
 import { SITE } from '@/lib/site'
-import { asCategory, asMedia } from '@/lib/types'
+import { asMedia } from '@/lib/types'
 
 // Картинка для поста в Instagram: 1080×1350 (4:5), JPEG — PNG и WebP Instagram API не принимает.
-// Сверху фото статьи, снизу тёмная плашка брендбука с рубрикой, заголовком и логотипом.
+// Стиль новостных пабликов: фото на весь кадр, сверху логотип, снизу затемнение и крупный заголовок
+// заглавными буквами; последние слова — на бирюзовой плашке. Цвета — брендбук TechTalQ.
 const W = 1080
 const H = 1350
-const PHOTO_H = 740
+const PAD = 72
 
-function titleSize(title: string, roomy: boolean) {
-  const n = title.length
-  const base = n <= 60 ? 62 : n <= 90 ? 54 : n <= 120 ? 48 : 42
-  return roomy ? base + 10 : base
-}
-
-/** Фото статьи → JPEG data URL нужного размера (Satori не читает WebP) */
+/** Фото статьи → JPEG data URL на весь кадр (Satori не читает WebP) */
 async function photoDataUrl(src: string | null | undefined): Promise<string | null> {
   if (!src) return null
   try {
@@ -26,8 +21,8 @@ async function photoDataUrl(src: string | null | undefined): Promise<string | nu
     const res = await fetch(url)
     if (!res.ok) return null
     const jpg = await sharp(Buffer.from(await res.arrayBuffer()))
-      .resize(W, PHOTO_H, { fit: 'cover', position: 'attention' })
-      .jpeg({ quality: 88 })
+      .resize(W, H, { fit: 'cover', position: 'attention' })
+      .jpeg({ quality: 86 })
       .toBuffer()
     return `data:image/jpeg;base64,${jpg.toString('base64')}`
   } catch {
@@ -35,70 +30,111 @@ async function photoDataUrl(src: string | null | undefined): Promise<string | nu
   }
 }
 
+/** Заголовок → основная часть и последние слова для плашки */
+function splitTitle(title: string): { main: string; tail: string } {
+  const words = title.split(/\s+/).filter(Boolean)
+  if (words.length < 4) return { main: title, tail: '' }
+  const tail: string[] = []
+  while (words.length > 2 && (tail.join(' ').length < 14 || tail.length < 2) && tail.length < 4) {
+    tail.unshift(words.pop()!)
+  }
+  return { main: words.join(' '), tail: tail.join(' ') }
+}
+
+function titleSize(n: number) {
+  return n <= 45 ? 70 : n <= 70 ? 62 : n <= 95 ? 54 : n <= 120 ? 48 : 42
+}
+
+/** Подпись к фото: автор/лицензия без ссылки, коротко */
+function photoCredit(credit: string | null | undefined): string {
+  const c = (credit || '').split(' — ')[0].replace(/\s+/g, ' ').trim()
+  return c.length > 52 ? `${c.slice(0, 49)}…` : c
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const article = await articleBySlug((await params).slug)
   if (!article) return new Response('Not found', { status: 404 })
 
-  const { ink, sky, gold } = COVER_THEME
-  const cat = asCategory(article.category)
+  const { ink, sky } = COVER_THEME
   const img = asMedia(article.coverImage)
-  const photo = await photoDataUrl(img?.sizes?.hero?.url || img?.url)
-  const title = article.title.length > 150 ? `${article.title.slice(0, 147)}…` : article.title
-  const label = (cat?.name || 'Технология').toUpperCase()
+  const photo = await photoDataUrl(img?.url || img?.sizes?.hero?.url)
+  const raw = article.title.length > 140 ? `${article.title.slice(0, 137)}…` : article.title
+  const upper = raw.toLocaleUpperCase('kk-KZ')
+  const { main, tail } = splitTitle(upper)
+  const size = titleSize(upper.length)
+  const credit = photoCredit(img?.credit)
+  const creditLine = credit ? `Фото: ${credit}` : ''
   const host = SITE.url.replace(/^https?:\/\//, '')
-  const allText = `${label}${title}${host}0123456789·…`
+  const allText = `${upper}${creditLine}${host}0123456789·…`
 
-  const [bold, regular, logo] = await Promise.all([
-    loadFont('Inter', 800, allText), loadFont('Inter', 500, allText), loadFont('Space Grotesk', 700, 'TechTalQ'),
+  const [black, regular, logo] = await Promise.all([
+    loadFont('Inter', 900, allText), loadFont('Inter', 500, allText), loadFont('Space Grotesk', 700, 'TechTalQ'),
   ])
   const fonts = [
-    bold && { name: 'Inter', data: bold, weight: 800 as const, style: 'normal' as const },
+    black && { name: 'Inter', data: black, weight: 900 as const, style: 'normal' as const },
     regular && { name: 'Inter', data: regular, weight: 500 as const, style: 'normal' as const },
     logo && { name: 'Space Grotesk', data: logo, weight: 700 as const, style: 'normal' as const },
-  ].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 800 | 700 | 500; style: 'normal' }[]
+  ].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 900 | 700 | 500; style: 'normal' }[]
 
   const png = new ImageResponse(
     (
-      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: ink,
-        color: '#fff', fontFamily: 'Inter', position: 'relative' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', position: 'relative', backgroundColor: ink,
+        color: '#fff', fontFamily: 'Inter' }}>
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} width={W} height={PHOTO_H} style={{ width: W, height: PHOTO_H, objectFit: 'cover' }} alt="" />
+          <img src={photo} width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, width: W, height: H }} alt="" />
         ) : (
-          <div style={{ position: 'absolute', right: -170, top: -190, width: 640, height: 640, borderRadius: 9999,
-            border: `100px solid ${sky}24`, display: 'flex' }} />
+          <div style={{ position: 'absolute', right: -200, top: 120, width: 760, height: 760, borderRadius: 9999,
+            border: `120px solid ${sky}22`, display: 'flex' }} />
         )}
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: photo ? 'space-between' : 'flex-end',
-          padding: photo ? '40px 72px 56px' : '72px 72px 56px', gap: 28 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div style={{ display: 'flex' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2.5, padding: '9px 16px', borderRadius: 8,
-                backgroundColor: sky, color: ink, display: 'flex' }}>
-                {label}
-              </div>
-            </div>
-            <div style={{ fontSize: titleSize(title, !photo), fontWeight: 800, lineHeight: 1.14, letterSpacing: -1.2,
-              display: 'flex' }}>
-              {title}
-            </div>
-          </div>
+        {/* затемнение сверху под логотип и снизу под заголовок */}
+        <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: 260, display: 'flex',
+          backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0.7), rgba(11,27,58,0))' }} />
+        <div style={{ position: 'absolute', left: 0, bottom: 0, width: W, height: 820, display: 'flex',
+          backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0) 0%, rgba(11,27,58,0.82) 42%, rgba(11,27,58,0.97) 70%, #0B1B3A 100%)' }} />
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: photo ? 0 : 56 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <svg width="46" height="46" viewBox="0 0 64 64" fill="none">
-                <circle cx="27" cy="27" r="20" stroke="#fff" strokeWidth="9" />
-                <circle cx="27" cy="27" r="4.2" fill={sky} />
-                <path d="M39.5 39.5l15 15" stroke={gold} strokeWidth="8" strokeLinecap="round" />
-              </svg>
-              <div style={{ fontFamily: 'Space Grotesk', fontSize: 36, fontWeight: 700, display: 'flex' }}>
-                <span>TechTal</span><span style={{ color: sky, marginLeft: -9 }}>Q</span>{/* рендерер даёт лишний зазор после «l» */}
+        {/* логотип по центру сверху, бирюзовая черта под ним */}
+        <div style={{ position: 'absolute', top: 66, left: 0, width: W, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <svg width="40" height="40" viewBox="0 0 64 64" fill="none">
+              <circle cx="27" cy="27" r="20" stroke="#fff" strokeWidth="9" />
+              <circle cx="27" cy="27" r="4.2" fill={sky} />
+              <path d="M39.5 39.5l15 15" stroke={COVER_THEME.gold} strokeWidth="8" strokeLinecap="round" />
+            </svg>
+            <div style={{ fontFamily: 'Space Grotesk', fontSize: 38, fontWeight: 700, display: 'flex' }}>
+              <span>TechTal</span><span style={{ color: sky, marginLeft: -9 }}>Q</span>{/* рендерер даёт лишний зазор после «l» */}
+            </div>
+          </div>
+          <div style={{ width: 200, height: 6, borderRadius: 3, backgroundColor: sky, display: 'flex' }} />
+        </div>
+
+        {/* заголовок */}
+        <div style={{ position: 'absolute', left: 0, bottom: creditLine ? 118 : 96, width: W, display: 'flex',
+          flexDirection: 'column' }}>
+          <div style={{ display: 'flex', marginLeft: PAD, marginRight: PAD - 10, paddingLeft: 26,
+            borderLeft: `9px solid ${sky}` }}>
+            <div style={{ fontSize: size, fontWeight: 900, lineHeight: 1.06, letterSpacing: -1, display: 'flex' }}>
+              {main}
+            </div>
+          </div>
+          {tail && (
+            <div style={{ display: 'flex', marginTop: 6, paddingLeft: PAD, paddingRight: 120, paddingTop: 4, paddingBottom: 8,
+              backgroundImage: `linear-gradient(to right, ${sky} 0%, rgba(0,175,202,0.92) 55%, rgba(0,175,202,0) 100%)` }}>
+              <div style={{ fontSize: size, fontWeight: 900, lineHeight: 1.06, letterSpacing: -1, display: 'flex' }}>
+                {tail}
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 500, color: '#9FB0CC', display: 'flex' }}>{host}</div>
-          </div>
+          )}
         </div>
-        <div style={{ position: 'absolute', left: 72, bottom: 0, width: 120, height: 10, backgroundColor: gold, display: 'flex' }} />
+
+        {/* подпись к фото и адрес сайта */}
+        <div style={{ position: 'absolute', left: PAD, right: PAD, bottom: 52, display: 'flex',
+          justifyContent: 'space-between', fontSize: 24, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>
+          <div style={{ display: 'flex' }}>{creditLine}</div>
+          <div style={{ display: 'flex' }}>{host}</div>
+        </div>
       </div>
     ),
     { width: W, height: H, fonts: fonts.length ? fonts : undefined },
