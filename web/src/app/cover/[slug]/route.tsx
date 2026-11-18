@@ -59,7 +59,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
             <path d="M39.5 39.5l15 15" stroke={gold} strokeWidth="8" strokeLinecap="round" />
           </svg>
           <div style={{ fontFamily: 'Space Grotesk', fontSize: 40, fontWeight: 700, letterSpacing: -1, display: 'flex' }}>
-            <span>TechTal</span><span style={{ color: sky }}>Q</span>
+            <span style={{ fontFamily: 'Space Grotesk', fontWeight: 700 }}>TechTal</span><span style={{ fontFamily: 'Space Grotesk', fontWeight: 700, color: sky }}>Q</span>
           </div>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2.5, padding: '9px 16px', borderRadius: 8,
             backgroundColor: sky, color: ink, display: 'flex', marginLeft: 8 }}>
