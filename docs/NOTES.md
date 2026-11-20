@@ -142,3 +142,6 @@
 - Картинка — та же `/ig/<slug>`; адрес `https://techtalq.kz/ig/` должен быть подтверждён в приложении TikTok (URL prefix), иначе `url_ownership_unverified`.
 - Конвейер: `step=tiktok` (`qtnews/tiktok.py`), cron `qtnews-tiktok` в :20 и :50. Access-токен 24 ч — продлевается refresh-токеном (365 дней) за 2 ч до истечения. Лимит в сутки по умолчанию 5.
 - Таблица `cms.tiktok_settings` создана вручную, владелец — qtnews.
+- Подключено 20.11.2026: приложение TikTok «TechTalQ» (app 7710265342467917845), режим Sandbox «techtalq-drafts», тестовый пользователь @techtalq. URL prefix `https://techtalq.kz/` подтверждён файлом `web/public/tiktokovVR49Q78FQjSdDzpwREOmx6D5y4fGFi.txt` (не удалять). Страницы для приложения: `/aqparat/qupiyalyq-sayasaty`, `/aqparat/paidalanu-sharttary`.
+- Окна входа TikTok/Meta во встроенном браузере открываются только по клику пользователя (popup).
+
