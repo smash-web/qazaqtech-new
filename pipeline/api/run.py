@@ -2,7 +2,7 @@
 
 Вызывается планировщиком (pg_cron в Supabase) каждые 30 минут:
     POST /api/run            — сбор + обработка
-    POST /api/run?step=collect | process | covers | social
+    POST /api/run?step=collect | process | covers | social | tiktok
 Заголовок: Authorization: Bearer <CRON_SECRET>
 """
 from __future__ import annotations
@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from qtnews.config import load  # noqa: E402
 from qtnews.main import backfill_covers, build_with_cfg, collect, make_images, process  # noqa: E402
 from qtnews.social import post_to_instagram  # noqa: E402
+from qtnews.tiktok import post_to_tiktok  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -67,6 +68,8 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
                                                    limit=8, deadline=deadline)
             if step == "social":
                 result["social"] = post_to_instagram(cfg, db, cms)
+            if step == "tiktok":
+                result["tiktok"] = post_to_tiktok(cfg, db, cms)
             result["seconds"] = round(time.time() - started, 1)
             self._send(200, result)
         except Exception as exc:  # noqa: BLE001

@@ -134,3 +134,11 @@
 - В конфигурации входа оставлены только аккаунты Instagram (рекламные аккаунты убраны, иначе диалог предлагает создать рекламный аккаунт).
 - Callback проверяет подписанный `state`, а не cookie сессии: после диалога Meta браузер возвращается без cookie админки.
 - Вход «через Instagram» в диалоге Meta не работает, пока приложение в режиме разработки («App not active») — входить через Facebook-профиль администратора приложения.
+
+## TikTok — черновики (ноябрь 2026)
+
+- Режим MEDIA_UPLOAD (Content Posting API, фото): сайт кладёт пост в «Входящие» TikTok, владелец публикует сам. Прямая публикация (DIRECT_POST) без аудита TikTok возможна только приватно.
+- Web: глобал `tiktok-settings` (только разработчик; читает/пишет бот), `/tiktok/connect` → www.tiktok.com/v2/auth/authorize (scope user.info.basic,video.upload) → `/tiktok/callback` → open.tiktokapis.com/v2/oauth/token. Env web и pipeline: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`. Redirect URI: `https://techtalq.kz/tiktok/callback`.
+- Картинка — та же `/ig/<slug>`; адрес `https://techtalq.kz/ig/` должен быть подтверждён в приложении TikTok (URL prefix), иначе `url_ownership_unverified`.
+- Конвейер: `step=tiktok` (`qtnews/tiktok.py`), cron `qtnews-tiktok` в :20 и :50. Access-токен 24 ч — продлевается refresh-токеном (365 дней) за 2 ч до истечения. Лимит в сутки по умолчанию 5.
+- Таблица `cms.tiktok_settings` создана вручную, владелец — qtnews.

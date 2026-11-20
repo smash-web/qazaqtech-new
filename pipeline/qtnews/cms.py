@@ -144,3 +144,10 @@ class CMSClient:
             "where[status][equals]": "published", "where[publishedAt][greater_than]": since_iso,
             "sort": "publishedAt", "limit": limit, "depth": 1})
         return data.get("docs", [])
+
+    # --- TikTok -------------------------------------------------------------------
+    def tiktok_settings(self) -> dict:
+        return self._req("GET", "/globals/tiktok-settings", params={"depth": 0})
+
+    def update_tiktok_settings(self, data: dict) -> None:
+        self._req("POST", "/globals/tiktok-settings", json=data)
