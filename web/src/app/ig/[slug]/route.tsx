@@ -7,14 +7,16 @@ import { SITE } from '@/lib/site'
 import { asCategory, asMedia } from '@/lib/types'
 
 // Картинка для поста в Instagram: 1080×1350 (4:5), JPEG — PNG и WebP Instagram API не принимает.
+// ?format=story — сторис 1080×1920: те же элементы, отступы под шапку и поле ответа Instagram.
 // Фото на весь кадр, логотип в углу, снизу затемнение: метка рубрики, заголовок (последние слова — бирюзовым),
 // тонкая линия и подпись к фото. Цвета и шрифты — брендбук TechTalQ.
 const W = 1080
-const H = 1350
+const POST_H = 1350
+const STORY_H = 1920
 const PAD = 72
 
 /** Фото статьи → JPEG data URL на весь кадр (Satori не читает WebP) */
-async function photoDataUrl(src: string | null | undefined): Promise<string | null> {
+async function photoDataUrl(src: string | null | undefined, H: number): Promise<string | null> {
   if (!src) return null
   try {
     const url = src.startsWith('http') ? src : `${SITE.url}${src}`
@@ -51,13 +53,15 @@ function photoCredit(credit: string | null | undefined): string {
   return c.length > 52 ? `${c.slice(0, 49)}…` : c
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const story = new URL(req.url).searchParams.get('format') === 'story'
+  const H = story ? STORY_H : POST_H
   const article = await articleBySlug((await params).slug)
   if (!article) return new Response('Not found', { status: 404 })
 
   const { ink, sky } = COVER_THEME
   const img = asMedia(article.coverImage)
-  const photo = await photoDataUrl(img?.url || img?.sizes?.hero?.url)
+  const photo = await photoDataUrl(img?.url || img?.sizes?.hero?.url, H)
   const raw = article.title.length > 140 ? `${article.title.slice(0, 137)}…` : article.title
   const { main, tail } = splitTitle(raw)
   const size = titleSize(raw.length)
@@ -65,7 +69,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const credit = photoCredit(img?.credit)
   const creditLine = credit ? `Фото: ${credit}` : ''
   const host = SITE.url.replace(/^https?:\/\//, '')
-  const allText = `${raw}${label}${creditLine}${host}0123456789·…`
+  const footer = story ? `Толығы — ${host}` : host
+  const allText = `${raw}${label}${creditLine}${footer}0123456789·…`
 
   const [black, regular, logo] = await Promise.all([
     loadFont('Inter', 800, allText), loadFont('Inter', 500, allText), loadFont('Space Grotesk', 700, 'TechTalQ'),
@@ -89,13 +94,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         )}
 
         {/* затемнение сверху под логотип и снизу под заголовок */}
-        <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: 300, display: 'flex',
+        <div style={{ position: 'absolute', left: 0, top: 0, width: W, height: story ? 480 : 300, display: 'flex',
           backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0.9) 0%, rgba(11,27,58,0.6) 45%, rgba(11,27,58,0) 100%)' }} />
-        <div style={{ position: 'absolute', left: 0, bottom: 0, width: W, height: 820, display: 'flex',
+        <div style={{ position: 'absolute', left: 0, bottom: 0, width: W, height: story ? 1100 : 820, display: 'flex',
           backgroundImage: 'linear-gradient(to bottom, rgba(11,27,58,0) 0%, rgba(11,27,58,0.82) 42%, rgba(11,27,58,0.97) 70%, #0B1B3A 100%)' }} />
 
         {/* логотип в левом верхнем углу */}
-        <div style={{ position: 'absolute', top: 60, left: PAD, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ position: 'absolute', top: story ? 210 : 60, left: PAD, display: 'flex', alignItems: 'center', gap: 12 }}>
           <svg width="38" height="38" viewBox="0 0 64 64" fill="none">
             <circle cx="27" cy="27" r="20" stroke="#fff" strokeWidth="9" />
             <circle cx="27" cy="27" r="4.2" fill={sky} />
@@ -107,7 +112,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         </div>
 
         {/* рубрика, заголовок, линия и подпись */}
-        <div style={{ position: 'absolute', left: PAD, right: PAD, bottom: 56, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'absolute', left: PAD, right: PAD, bottom: story ? 300 : 56, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex' }}>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2.5, padding: '9px 16px', borderRadius: 8,
               backgroundColor: sky, color: ink, display: 'flex' }}>
@@ -127,7 +132,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, fontSize: 23, fontWeight: 500,
             color: 'rgba(255,255,255,0.6)' }}>
             <div style={{ display: 'flex' }}>{creditLine}</div>
-            <div style={{ display: 'flex' }}>{host}</div>
+            <div style={{ display: 'flex', color: story ? COVER_THEME.gold : undefined }}>{footer}</div>
           </div>
         </div>
       </div>
