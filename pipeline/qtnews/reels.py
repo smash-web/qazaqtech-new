@@ -56,11 +56,13 @@ SCRIPT_PROMPT = """Мақала:
   "body": "неге маңызды: мәні, қарапайым адамға, Қазақстанға не өзгереді, қызықты деталь; 3–4 қысқа сөйлем, 40–65 сөз",
   "question": "пікір жазуға шақыратын даулы немесе жеке сұрақ (6–12 сөз)",
   "subjects": ["нақты нысандар ағылшынша: компания, өнім, қала (1–3 атау, адам аты емес)"],
-  "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші", "үшінші"]
+  "broll": ["5 сұрау ағылшынша, мәтіндегі сөйлемдердің ретімен — әр сөйлемге бір кадр, 2–4 сөз", "…", "…", "…", "…"]
 }}
 subjects — бейнемұрағаттан нақты кадр іздеуге (мысалы: "Nvidia", "Stuttgart", "iPhone 17").
-broll — көрнекі нақты зат не әрекет (мысалы: "graphics card closeup", "iphone in hand"), "technology" сияқты жалпы сөз емес,
-адам аты-жөні мүлде болмасын (стоктағы бөтен адамды сол адам етіп көрсетпеу үшін)."""
+broll — стоктық бейнелерде (Pixabay) шынымен бар кадрлар: адамдардың әрекеті мен заттар, сөйлемнің мағынасына сай
+(мысалы: "woman scrolling phone", "hands typing laptop", "judge gavel", "server room", "city traffic night",
+"businessman signing document"). Абстрактілі ұғым ("lawsuit", "regulation") емес — көзбен көрінетін нәрсе.
+Адам аты-жөні, бренд атауы болмасын (стоктағы бөтен адамды сол адам етіп көрсетпеу үшін)."""
 SUBSCRIBE = "Пікіріңізді жазыңыз. Мұндай жаңалықтарды жіберіп алмау үшін жазылыңыз!"
 
 PICK_PROMPT = """Төмендегі соңғы IT-жаңалықтардың ішінен Instagram Reels пен TikTok-та ең көп қаралатын, талқыланатын
@@ -142,7 +144,7 @@ def pixabay_clips(api_key: str, queries: list[str], user_agent: str, want: int =
     """Стоковые видео Pixabay (бесплатная лицензия Pixabay). Чаще горизонтальные — в рилсе кадрируются по центру."""
     clips: list[dict] = []
     seen: set[int] = set()
-    for q in queries + ["computer technology", "data center"]:
+    for q in queries + ["person using smartphone", "hands typing laptop"]:
         if len(clips) >= want:
             break
         try:
@@ -154,6 +156,8 @@ def pixabay_clips(api_key: str, queries: list[str], user_agent: str, want: int =
             log.warning("Pixabay «%s»: %s", q, str(exc).replace(api_key, "***"))
             continue
         words = {w for w in re.findall(r"[a-z]{3,}", q.lower()) if w not in _STOP}
+        vert = lambda h: any((v or {}).get("height", 0) > (v or {}).get("width", 0) for v in (h.get("videos") or {}).values())  # noqa: E731
+        hits = sorted(hits, key=lambda h: not vert(h))  # вертикальные — первыми, порядок релевантности внутри сохраняем
         for h in hits:
             if h.get("id") in seen or (h.get("duration") or 0) < 5:
                 continue
@@ -280,7 +284,7 @@ def write_script(llm: LLM, model: str, article: dict, tags: bool = False) -> dic
     teaser = re.sub(r"\s*\[[^\]]*\]\s*", " ", hook).strip()
     if question and not question.endswith("?"):
         question = question.rstrip(".!") + "?"
-    broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:3]
+    broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip() and q.strip() != "…"][:6]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
     return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body,
             "outro": f"{question} {SUBSCRIBE}".strip(), "broll": broll, "subjects": subjects}
@@ -386,12 +390,12 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     # видео: сначала точные кадры по названиям с Commons, остальное — тематические с Pexels (всего до 3)
     clips = commons_clips(script.get("subjects") or [], cfg.user_agent) if script.get("subjects") else []
     pix = (s.get("pixabayApiKey") or "").strip()
-    if pix and len(clips) < 4:
-        clips += pixabay_clips(pix, script.get("broll") or [], cfg.user_agent, want=4 - len(clips))
+    if pix and len(clips) < 6:
+        clips += pixabay_clips(pix, script.get("broll") or [], cfg.user_agent, want=6 - len(clips))
     pex = (s.get("pexelsApiKey") or "").strip()
-    if pex and len(clips) < 4:
-        clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=4 - len(clips))
-    job["broll"] = clips[:4]
+    if pex and len(clips) < 6:
+        clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=6 - len(clips))
+    job["broll"] = clips[:6]
     db.log_run("reel_prepare", {"article": aid, "chars": len(text), "broll": len(job.get("broll") or [])})
     return {"job": job}
 

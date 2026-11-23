@@ -154,7 +154,7 @@ def sentence_starts(chars: list[str], starts: list[float]) -> list[float]:
 
 def plan_shots(intro_end: float, outro_start: float, end: float, headline_start: float | None,
                sentences: list[float]) -> list[dict]:
-    """Монтаж: общий план → средний (анонс) → новость → крупный план в студии на одном предложении → новость → концовка."""
+    """Монтаж: диктор в студии только во вступлении (общий → средний план), дальше — видео на весь экран до конца."""
     hs = headline_start if headline_start and 0.8 < headline_start < intro_end - 0.6 else None
     shots: list[dict] = []
     if hs:
@@ -162,42 +162,26 @@ def plan_shots(intro_end: float, outro_start: float, end: float, headline_start:
                   {"type": "studio", "start": hs, "end": intro_end, "cam0": "medium", "cam1": "medium2"}]
     else:
         shots.append({"type": "studio", "start": 0, "end": intro_end, "cam0": "wide", "cam1": "medium"})
-    news_len = outro_start - intro_end
-    inner = [x for x in sentences if intro_end + 3 < x < outro_start - 3]
-    ins = None
-    if news_len > 11 and inner:
-        b = min(inner, key=lambda x: abs(x - (intro_end + news_len * .55)))
-        nxt = [x for x in sentences if x > b + 1.5]
-        ins = (b, min(nxt[0] if nxt else b + 4, b + 4.5, outro_start - 3))
-        if ins[1] - ins[0] < 2:
-            ins = None
-    if ins:
-        shots += [{"type": "news", "start": intro_end, "end": ins[0]},
-                  {"type": "studio", "start": ins[0], "end": ins[1], "cam0": "close", "cam1": "close2"},
-                  {"type": "news", "start": ins[1], "end": outro_start}]
-    else:
-        shots.append({"type": "news", "start": intro_end, "end": outro_start})
-    shots.append({"type": "studio", "start": outro_start, "end": end + 1, "cam0": "close2", "cam1": "medium"})
+    shots.append({"type": "news", "start": intro_end, "end": end + 1})
     return [{**x, "start": round(x["start"], 3), "end": round(x["end"], 3)} for x in shots]
 
 
-def plan_cuts(shots: list[dict], clips: int, word_starts: list[float], step: float = 2.7) -> list[dict]:
-    """Склейки внутри новостных отрезков: фото новости и видео по очереди, смена примерно каждые 2,7 с (по началу слова)."""
-    # есть хоть одно видео — монтируем только видео; фото новости — лишь когда видео не нашлось
+def plan_cuts(shots: list[dict], clips: int, sentences: list[float], min_len: float = 2.6, max_len: float = 5.2) -> list[dict]:
+    """Склейки как в новостных рилсах: новый кадр на каждом предложении (2,6–5,2 с), клипы по очереди."""
     items = [("clip", i) for i in range(clips)] or [("photo", None)]
     cuts, n, played = [], 0, {}
     for sh in shots:
         if sh["type"] != "news":
             continue
         t, first = sh["start"], True
+        bounds = sorted(x for x in sentences if sh["start"] < x < sh["end"])
         while t < sh["end"] - 0.05:
-            target = t + step
-            near = [w for w in word_starts if target - 0.6 <= w <= target + 0.6]
-            e = min(near, key=lambda w: abs(w - target)) if near else target
-            if sh["end"] - e < step * 0.6:
+            nxt = [x for x in bounds if min_len <= x - t <= max_len]
+            e = nxt[0] if nxt else min(t + max_len * 0.8, sh["end"])
+            if sh["end"] - e < min_len:
                 e = sh["end"]
             kind, ci = items[n % len(items)]
-            cut = {"start": round(t, 3), "end": round(e, 3), "kind": kind, "dir": 1 if n % 2 == 0 else -1, "first": first}
+            cut = {"start": round(t, 3), "end": round(e, 3), "kind": kind, "first": first}
             if kind == "clip":
                 cut["clip"], cut["from"] = ci, round(played.get(ci, 0.0), 3)
                 played[ci] = played.get(ci, 0.0) + (e - t)
@@ -243,9 +227,9 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
         "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
         "photo": data_url(photo), "photoCredit": photo_credit, "hostImage": data_url(HERE / "assets" / "host.jpg"),
         "hostSvg": host_svg(), "ticker": ticker or [], "broll": broll or [],
-        "visemes": visemes(chars, st, en), "phrases": phrases(news_words, max_words=3, max_chars=18),
+        "visemes": visemes(chars, st, en), "phrases": phrases(news_words, max_words=9, max_chars=52),
         "blinks": blinks(duration), "shots": shots,
-        "cuts": plan_cuts(shots, len(broll or []), [w.start for w in news_words if w.start < outro_start]),
+        "cuts": plan_cuts(shots, len(broll or []), sentence_starts(chars, st)),
         "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration},
     }
 
