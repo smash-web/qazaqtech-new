@@ -11,7 +11,7 @@ export const TelegramSettings: GlobalConfig = {
     hidden: hiddenUnless('developer'),
     group: 'Конвейер',
     description:
-      'Новости сайта публикуются в Telegram-канал: картинка, заголовок, анонс и кнопка «Толығы оқу». ' +
+      'Новости сайта публикуются в Telegram-канал: картинка, заголовок, анонс и кнопка «Толық оқу». ' +
       'Бот (создаётся в @BotFather) должен быть администратором канала с правом публиковать сообщения.',
   },
   access: { read: devOrBot, update: devOrBot },

@@ -340,7 +340,7 @@ def _tg_reel(cfg: Config, s: dict, article: dict, video_url: str, client: Telegr
     url = article_url(article, cfg.site_url)
     msg = client._call("sendVideo", chat_id=channel, video=video_url, caption=build_post(article, cfg.site_url),
                        parse_mode="HTML", supports_streaming=True, width=1080, height=1920,
-                       reply_markup={"inline_keyboard": [[{"text": "Толығы оқу →", "url": url}]]})
+                       reply_markup={"inline_keyboard": [[{"text": "Толық оқу →", "url": url}]]})
     mid = str(msg.get("message_id") or "")
     return f"https://t.me/{channel[1:]}/{mid}" if channel.startswith("@") else mid
 
