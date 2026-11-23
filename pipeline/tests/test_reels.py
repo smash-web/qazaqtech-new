@@ -203,3 +203,21 @@ def test_preview_is_not_published_or_repicked(db):
     r = publish_reel(Config(), db, cms, {"article_id": 1, "preview_url": "https://x/r.mp4"}, now=NOW)
     assert r == {"preview": "https://x/r.mp4"} and db.social_get(1, REEL)["status"] == "preview"
     assert pick_article(cms, db, cms.settings, NOW) is None
+
+
+def test_pixabay_picks_large_and_hides_key(monkeypatch):
+    from qtnews import reels
+
+    class Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"hits": [
+                {"id": 1, "duration": 3, "videos": {"large": {"url": "short", "width": 1920, "height": 1080}}},
+                {"id": 2, "duration": 14, "user": "Bob", "pageURL": "https://pixabay.com/v/2",
+                 "videos": {"large": {"url": "big", "width": 1920, "height": 1080}, "medium": {"url": "mid", "width": 1280, "height": 720}}}]}
+
+    monkeypatch.setattr(reels.requests, "get", lambda *a, **k: Resp())
+    assert reels.pixabay_clips("k", ["server"], "ua", want=1) == [
+        {"url": "big", "query": "server", "duration": 14, "page": "https://pixabay.com/v/2", "credit": "Bob / Pixabay"}]

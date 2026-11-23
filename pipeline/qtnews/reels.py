@@ -129,6 +129,42 @@ def pexels_clips(api_key: str, queries: list[str], user_agent: str, want: int = 
     return clips
 
 
+PIXABAY = "https://pixabay.com/api/videos/"
+
+
+def pixabay_clips(api_key: str, queries: list[str], user_agent: str, want: int = 2, timeout: int = 30) -> list[dict]:
+    """Стоковые видео Pixabay (бесплатная лицензия Pixabay). Чаще горизонтальные — в рилсе кадрируются по центру."""
+    clips: list[dict] = []
+    seen: set[int] = set()
+    for q in queries + ["computer technology", "data center"]:
+        if len(clips) >= want:
+            break
+        try:
+            r = requests.get(PIXABAY, timeout=timeout, headers={"User-Agent": user_agent},
+                             params={"key": api_key, "q": q[:100], "per_page": 10, "safesearch": "true"})
+            r.raise_for_status()
+            hits = r.json().get("hits") or []
+        except (requests.RequestException, ValueError) as exc:
+            log.warning("Pixabay «%s»: %s", q, str(exc).replace(api_key, "***"))
+            continue
+        for h in hits:
+            if h.get("id") in seen or (h.get("duration") or 0) < 5:
+                continue
+            vids = h.get("videos") or {}
+            # вертикальные — в приоритете; иначе самое крупное (кадрируем)
+            files = [v for v in (vids.get(k) for k in ("large", "medium")) if v and v.get("url")]
+            if not files:
+                continue
+            f = max(files, key=lambda v: ((v.get("height") or 0) > (v.get("width") or 0), v.get("height") or 0))
+            if (f.get("height") or 0) < 720:
+                continue
+            seen.add(h["id"])
+            clips.append({"url": f["url"], "query": q, "duration": h.get("duration"), "page": h.get("pageURL"),
+                          "credit": f"{h.get('user') or 'автор'} / Pixabay"})
+            break
+    return clips
+
+
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 
 
@@ -331,6 +367,9 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     }
     # видео: сначала точные кадры по названиям с Commons, остальное — тематические с Pexels (всего до 3)
     clips = commons_clips(script.get("subjects") or [], cfg.user_agent) if script.get("subjects") else []
+    pix = (s.get("pixabayApiKey") or "").strip()
+    if pix and len(clips) < 4:
+        clips += pixabay_clips(pix, script.get("broll") or [], cfg.user_agent, want=4 - len(clips))
     pex = (s.get("pexelsApiKey") or "").strip()
     if pex and len(clips) < 4:
         clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=4 - len(clips))

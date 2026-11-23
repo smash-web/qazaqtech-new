@@ -47,6 +47,10 @@ export const ReelsSettings: GlobalConfig = {
       admin: { placeholder: 'sk_…', description: 'elevenlabs.io → Developers → API Keys. Никому не пересылайте.' },
     },
     {
+      name: 'pixabayApiKey', label: 'API-ключ Pixabay (видео)', type: 'text',
+      admin: { description: 'Бесплатно: pixabay.com/api/docs → после входа ключ показан в разделе «Parameters» (key).' },
+    },
+    {
       name: 'pexelsApiKey', label: 'API-ключ Pexels (видео-репортаж)', type: 'text',
       admin: {
         description: 'Бесплатно: pexels.com/api → «Your API Key». С ключом в середине новости идут тематические стоковые видео ' +
