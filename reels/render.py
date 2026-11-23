@@ -1,0 +1,183 @@
+"""Сборка рилса TechTalQ 1080×1920: HTML-шаблон + диктор SVG → кадры (Playwright/Chromium) → MP4 (ffmpeg).
+
+Хронометраж задаёт озвучка: таймкоды символов ElevenLabs (alignment) превращаются в фазы рта
+(визе́мы) и субтитры по словам. Сцены: студия (приветствие и анонс) → новость на фоне, диктор в
+круге слева внизу → студия (концовка с призывом подписаться).
+"""
+from __future__ import annotations
+
+import base64
+import json
+import math
+import os
+import random
+import re
+import shutil
+import subprocess
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+
+HERE = Path(__file__).parent
+FPS = 30
+W, H = 1080, 1920
+
+# Казахская кириллица → форма рта
+O_SHAPE = set("оөуұүюОӨУҰҮЮ")
+WIDE = set("аәеэяАӘЕЭЯ")
+MID = set("ыіиӣйЫІИЙ")
+CLOSED = set("мбпвфМБПВФ")
+VOWELS = O_SHAPE | WIDE | MID | set("aeiouAEIOU")
+
+
+@dataclass
+class Word:
+    text: str
+    start: float
+    end: float
+
+
+def presenter_svg(gender: str = "f") -> str:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("presenter", HERE / "presenter.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod.presenter(gender)
+
+
+def visemes(chars: list[str], starts: list[float], ends: list[float]) -> list[list]:
+    """Таймкоды символов → [[начало, конец, форма рта]]; паузы — рот закрыт."""
+    out: list[list] = []
+    for ch, s, e in zip(chars, starts, ends):
+        if ch in CLOSED:
+            shape = "closed"
+        elif ch in O_SHAPE:
+            shape = "o"
+        elif ch in WIDE:
+            shape = "wide"
+        elif ch in MID:
+            shape = "mid"
+        elif ch.isalpha() or ch.isdigit():
+            shape = "small"
+        else:
+            shape = "closed"
+        e = max(e, s + 0.04)
+        if out and out[-1][2] == shape and s - out[-1][1] < 0.03:
+            out[-1][1] = e
+        else:
+            out.append([round(s, 3), round(e, 3), shape])
+    # слишком короткие открытия (<50 мс) сливаем с соседними, чтобы рот не «дрожал»
+    merged: list[list] = []
+    for v in out:
+        if merged and v[1] - v[0] < 0.05:
+            merged[-1][1] = v[1]
+        else:
+            merged.append(v)
+    return merged
+
+
+def words(chars: list[str], starts: list[float], ends: list[float]) -> list[Word]:
+    res: list[Word] = []
+    cur, ws, we = "", None, None
+    for ch, s, e in zip(chars, starts, ends):
+        if ch.isspace():
+            if cur:
+                res.append(Word(cur, ws, we))
+            cur, ws = "", None
+            continue
+        if ws is None:
+            ws = s
+        cur += ch
+        we = e
+    if cur:
+        res.append(Word(cur, ws, we))
+    return res
+
+
+def phrases(ws: list[Word], max_words: int = 6, max_chars: int = 34) -> list[dict]:
+    """Слова → фразы для субтитров: рвём по знакам препинания и по длине."""
+    out, cur = [], []
+    for w in ws:
+        cur.append(w)
+        text_len = sum(len(x.text) + 1 for x in cur)
+        if re.search(r"[.!?…:;,]$", w.text) or len(cur) >= max_words or text_len >= max_chars:
+            out.append(cur)
+            cur = []
+    if cur:
+        out.append(cur)
+    res = []
+    for i, ph in enumerate(out):
+        end = out[i + 1][0].start if i + 1 < len(out) else ph[-1].end + 0.4
+        res.append({"start": ph[0].start, "end": end,
+                    "words": [{"text": w.text, "start": w.start, "end": w.end} for w in ph]})
+    return res
+
+
+def blinks(duration: float, seed: int = 7) -> list[float]:
+    rnd, t, out = random.Random(seed), 1.2, []
+    while t < duration:
+        out.append(round(t, 2))
+        t += rnd.uniform(2.6, 4.4)
+    return out
+
+
+def data_url(path: Path) -> str:
+    mime = {".png": "image/png", ".webp": "image/webp"}.get(path.suffix.lower(), "image/jpeg")
+    return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
+
+
+def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo: Path, gender: str,
+               alignment: dict, duration: float, intro_end: float, outro_start: float) -> dict:
+    chars, st, en = alignment["characters"], alignment["character_start_times_seconds"], alignment["character_end_times_seconds"]
+    # субтитры только для новостной части (в студии их заменяет плашка)
+    news_words = [w for w in words(chars, st, en) if intro_end - 0.05 <= w.start < outro_start]
+    return {
+        "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
+        "photo": data_url(photo), "presenterSvg": presenter_svg(gender),
+        "visemes": visemes(chars, st, en), "phrases": phrases(news_words), "blinks": blinks(duration),
+        "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration},
+    }
+
+
+def render_frames(reel: dict, out_dir: Path, fps: int = FPS, times: list[float] | None = None) -> list[Path]:
+    from playwright.sync_api import sync_playwright
+    html = (HERE / "template.html").read_text(encoding="utf-8")
+    html = html.replace("<script>\n/* Данные", f"<script>window.REEL = {json.dumps(reel, ensure_ascii=False)};</script>\n<script>\n/* Данные", 1)
+    page_path = out_dir / "reel.html"
+    page_path.write_text(html, encoding="utf-8")
+    exe = os.environ.get("CHROME_PATH") or None
+    paths: list[Path] = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=exe, args=["--no-sandbox", "--disable-gpu"])
+        page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
+        page.goto(page_path.resolve().as_uri())
+        page.wait_for_function("window.render !== undefined")
+        page.evaluate("document.fonts.ready")
+        if times is None:
+            n = math.ceil(reel["timeline"]["end"] * fps)
+            times = [i / fps for i in range(n)]
+        for i, t in enumerate(times):
+            page.evaluate(f"render({t})")
+            path = out_dir / f"f{i:05d}.jpg"
+            page.screenshot(path=str(path), type="jpeg", quality=92)
+            paths.append(path)
+        browser.close()
+    return paths
+
+
+def render_video(reel: dict, audio: Path, out: Path, fps: int = FPS, music: Path | None = None) -> Path:
+    tmp = Path(tempfile.mkdtemp(prefix="reel-"))
+    try:
+        render_frames(reel, tmp, fps)
+        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(tmp / "f%05d.jpg"), "-i", str(audio)]
+        if music:
+            cmd += ["-stream_loop", "-1", "-i", str(music), "-filter_complex",
+                    "[2:a]volume=0.12[m];[1:a]apad[v];[v][m]amix=inputs=2:duration=first:dropout_transition=2[a]", "-map", "0:v", "-map", "[a]"]
+        else:
+            cmd += ["-map", "0:v", "-map", "1:a", "-af", "apad"]
+        cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(fps),
+                "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-shortest", "-movflags", "+faststart", str(out)]
+        subprocess.run(cmd, check=True)
+        return out
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)

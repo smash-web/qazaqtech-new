@@ -3,7 +3,8 @@
 Вызывается планировщиком (pg_cron в Supabase) каждые 30 минут:
     POST /api/run            — сбор + обработка
     POST /api/run?step=collect | process | covers | social | tiktok | telegram
-Заголовок: Authorization: Bearer <CRON_SECRET>
+    POST /api/run?step=reel_prepare | reel_publish  — для workflow рилсов (тело — JSON)
+Заголовок: Authorization: Bearer <CRON_SECRET>; рилсы — Bearer <OIDC-токен GitHub Actions>
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from qtnews.main import backfill_covers, build_with_cfg, collect, make_images, p
 from qtnews.social import post_to_instagram  # noqa: E402
 from qtnews.tiktok import post_to_tiktok  # noqa: E402
 from qtnews.telegram import post_to_telegram  # noqa: E402
+from qtnews.reels import prepare_reel, publish_reel  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -31,6 +33,25 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 def _authorized(header: str | None) -> bool:
     secret = os.environ.get("CRON_SECRET", "")
     return bool(secret) and hmac.compare_digest(header or "", f"Bearer {secret}")
+
+
+REEL_STEPS = ("reel_prepare", "reel_publish")
+
+
+def _authorized_reels(header: str | None) -> bool:
+    """Шаги рилсов: CRON_SECRET (ручной запуск) или OIDC-токен workflow reels.yml."""
+    if _authorized(header):
+        return True
+    token = (header or "").removeprefix("Bearer ").strip()
+    if not token.count(".") == 2:
+        return False
+    try:
+        from qtnews.gh_oidc import verify
+        verify(token)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("OIDC отклонён: %s", exc)
+        return False
 
 
 class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует Vercel
@@ -46,10 +67,18 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
         self._send(200, {"ok": True, "service": "qtnews-pipeline"})
 
     def do_POST(self) -> None:
-        if not _authorized(self.headers.get("Authorization")):
+        step = parse_qs(urlparse(self.path).query).get("step", ["both"])[0]
+        auth = self.headers.get("Authorization")
+        if not (_authorized_reels(auth) if step in REEL_STEPS else _authorized(auth)):
             self._send(401, {"error": "unauthorized"})
             return
-        step = parse_qs(urlparse(self.path).query).get("step", ["both"])[0]
+        payload: dict = {}
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            try:
+                payload = json.loads(self.rfile.read(length) or b"{}")
+            except ValueError:
+                payload = {}
         started = time.time()
         deadline = time.monotonic()  # уточняется после загрузки конфига
         result: dict = {"step": step}
@@ -73,6 +102,10 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
                 result["tiktok"] = post_to_tiktok(cfg, db, cms)
             if step == "telegram":
                 result["telegram"] = post_to_telegram(cfg, db, cms)
+            if step == "reel_prepare":
+                result.update(prepare_reel(cfg, db, cms, llm))
+            if step == "reel_publish":
+                result.update(publish_reel(cfg, db, cms, payload))
             result["seconds"] = round(time.time() - started, 1)
             self._send(200, result)
         except Exception as exc:  # noqa: BLE001

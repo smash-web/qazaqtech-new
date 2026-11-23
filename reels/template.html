@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0B1B3A; }
+  body { font-family: Inter, 'Helvetica Neue', Arial, sans-serif; color: #fff; }
+  .layer { position: absolute; inset: 0; }
+  /* Студия */
+  #studio { background: radial-gradient(120% 70% at 50% 38%, #13305E 0%, #0B1B3A 62%); }
+  #studio .grid { position: absolute; inset: 0; opacity: .16;
+    background-image: linear-gradient(#2B4A80 1px, transparent 1px), linear-gradient(90deg, #2B4A80 1px, transparent 1px);
+    background-size: 90px 90px; mask-image: radial-gradient(70% 55% at 50% 40%, #000 30%, transparent 75%); }
+  .ring { position: absolute; border-radius: 50%; border-style: solid; }
+  #desk { position: absolute; left: 70px; right: 70px; top: 1290px; height: 230px; border-radius: 28px 28px 0 0;
+    background: linear-gradient(#0E2A52, #0A1B38); border-top: 6px solid #00AFCA; display: flex; align-items: center; justify-content: center; gap: 22px; }
+  #desk .word { font-size: 64px; font-weight: 800; letter-spacing: -1px; }
+  #desk .word b { color: #00AFCA; }
+  #presenter { position: absolute; transform-origin: 50% 100%; }
+  #presenter svg { width: 100%; height: 100%; display: block; }
+  /* Новость */
+  #news { overflow: hidden; }
+  #photo { position: absolute; left: -60px; top: -60px; width: 1200px; height: 2040px; background-size: cover; background-position: center; }
+  #news .shade { position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(11,27,58,.92) 0%, rgba(11,27,58,.55) 26%, rgba(11,27,58,.10) 44%, rgba(11,27,58,.30) 60%, rgba(11,27,58,.92) 82%, #0B1B3A 100%); }
+  #pip { position: absolute; left: 56px; top: 1250px; width: 380px; height: 380px; border-radius: 50%; overflow: hidden;
+    background: radial-gradient(#13305E, #0B1B3A); border: 10px solid #00AFCA; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+  #pip .inner { position: absolute; left: -38px; top: -50px; width: 440px; height: 550px; }
+  #pip .inner svg { width: 100%; height: 100%; display: block; }
+  #pipTag { position: absolute; left: 80px; top: 1610px; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 26px;
+    letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; }
+  /* Общие элементы */
+  #top { position: absolute; left: 64px; right: 64px; top: 200px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 16px; font-size: 44px; font-weight: 800; letter-spacing: -.5px; }
+  .logo b { color: #00AFCA; }
+  .live { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.18);
+    padding: 10px 20px; border-radius: 999px; font-size: 26px; font-weight: 700; letter-spacing: 1.5px; }
+  .live i { width: 14px; height: 14px; border-radius: 50%; background: #FF4D4D; display: block; }
+  #headline { position: absolute; left: 64px; right: 64px; top: 330px; }
+  .chip { display: inline-block; background: #00AFCA; color: #0B1B3A; font-weight: 800; font-size: 28px; letter-spacing: 2.5px;
+    padding: 10px 18px; border-radius: 10px; }
+  #headline h1 { margin: 22px 0 0; font-size: 62px; line-height: 1.1; letter-spacing: -1.2px; font-weight: 800; }
+  #headline h1 em { font-style: normal; color: #00AFCA; }
+  #lower { position: absolute; left: 70px; right: 70px; top: 1100px; }
+  #lower .bar { display: inline-block; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 30px; letter-spacing: 2px; padding: 12px 22px; border-radius: 12px 12px 0 0; }
+  #lower .title { background: rgba(11,27,58,.92); border-left: 10px solid #00AFCA; padding: 24px 28px; font-size: 46px; font-weight: 800; line-height: 1.15; border-radius: 0 14px 14px 14px; }
+  #subs { position: absolute; left: 470px; right: 64px; top: 1270px; min-height: 300px; display: flex; align-items: center; }
+  #subs p { margin: 0; font-size: 50px; font-weight: 800; line-height: 1.22; text-shadow: 0 4px 18px rgba(0,0,0,.6); }
+  #subs span.on { color: #FFC72C; }
+  #subs span.done { color: #fff; }
+  #subs span.todo { color: rgba(255,255,255,.55); }
+  #wipe { position: absolute; top: 0; bottom: 0; width: 1400px; left: -1500px; background: #00AFCA; transform: skewX(-12deg); }
+  #wipe::after { content: ''; position: absolute; top: 0; bottom: 0; right: -90px; width: 90px; background: #FFC72C; }
+  #outro .cta { position: absolute; left: 70px; right: 70px; top: 1290px; height: 260px; border-radius: 28px 28px 0 0; background: linear-gradient(#0E2A52, #0A1B38); border-top: 6px solid #FFC72C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  #outro .cta .site { background: #FFC72C; color: #0B1B3A; font-size: 54px; font-weight: 800; padding: 16px 28px; border-radius: 16px; }
+  #outro .cta .follow { font-size: 40px; font-weight: 700; color: #C9D6E8; }
+</style>
+</head>
+<body>
+  <div id="news" class="layer"><div id="photo"></div><div class="shade"></div></div>
+  <div id="studio" class="layer">
+    <div class="grid"></div>
+    <div class="ring" style="left:-260px;top:420px;width:900px;height:900px;border-width:70px;border-color:rgba(0,175,202,.07)"></div>
+    <div class="ring" style="right:-300px;top:180px;width:760px;height:760px;border-width:40px;border-color:rgba(255,199,44,.05)"></div>
+  </div>
+  <div id="presenter"></div>
+  <div id="desk" class="layer" style="position:absolute">
+    <svg width="78" height="78" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg>
+    <div class="word">TechTal<b>Q</b></div>
+  </div>
+  <div id="pip"><div class="inner"></div></div>
+  <div id="pipTag">TECHTALQ</div>
+  <div id="top">
+    <div class="logo"><svg width="54" height="54" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg><span>TechTal<b>Q</b></span></div>
+    <div class="live"><i></i><span id="dateLabel"></span></div>
+  </div>
+  <div id="headline"><span class="chip" id="cat"></span><h1 id="title"></h1></div>
+  <div id="lower"><span class="bar">IT ЖАҢАЛЫҚТАРЫ</span><div class="title" id="teaser"></div></div>
+  <div id="subs"><p id="subText"></p></div>
+  <div id="outro" class="layer" style="pointer-events:none"><div class="cta"><span class="site">techtalq.kz</span><span class="follow">Жазылыңыз — @techtalq.kz</span></div></div>
+  <div id="wipe"></div>
+<script>
+/* Данные ролика подставляет render.py: window.REEL = {...} */
+const R = window.REEL;
+const $ = (id) => document.getElementById(id);
+$('presenter').innerHTML = R.presenterSvg;
+$('pip').querySelector('.inner').innerHTML = R.presenterSvg.replace(/id="/g, 'id="p-');
+$('photo').style.backgroundImage = `url(${R.photo})`;
+$('cat').textContent = R.category;
+$('dateLabel').textContent = R.dateLabel;
+$('teaser').textContent = R.teaser;
+{ // заголовок: последние слова бирюзовым
+  const w = R.title.split(' '); const tail = w.splice(Math.max(2, w.length - 3));
+  $('title').innerHTML = w.join(' ') + ' <em>' + tail.join(' ') + '</em>';
+}
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const MOUTHS = ['closed', 'small', 'mid', 'wide', 'o', 'smile'];
+function setMouth(prefix, m) {
+  for (const k of MOUTHS) { const el = document.getElementById(prefix + 'm-' + k); if (el) el.style.display = k === m ? 'inline' : 'none'; }
+}
+function mouthAt(t) {
+  // R.visemes: [[start, end, shape], ...] по таймкодам озвучки
+  for (const v of R.visemes) { if (t >= v[0] && t < v[1]) return v[2]; }
+  return null;
+}
+function blinkAt(t) { // моргание раз в ~3,5 с, 0,12 с
+  for (const b of R.blinks) { if (t >= b && t < b + 0.12) return true; }
+  return false;
+}
+function render(t) {
+  const T = R.timeline;  // {introEnd, outroStart, end}
+  const inIntro = t < T.introEnd, inOutro = t >= T.outroStart;
+  const wipeIn = clamp((t - (T.introEnd - .45)) / .9), wipeOut = clamp((t - (T.outroStart - .45)) / .9);
+  // шторка-переход
+  const w = (t < T.outroStart - .6) ? wipeIn : wipeOut;
+  $('wipe').style.left = (w <= 0 || w >= 1) ? '-3000px' : (-1700 + w * 3400) + 'px';
+  const studio = inIntro || inOutro;
+  $('studio').style.display = studio ? 'block' : 'none';
+  $('desk').style.display = inIntro ? 'flex' : 'none';
+  $('presenter').style.display = studio ? 'block' : 'none';
+  $('news').style.display = studio ? 'none' : 'block';
+  $('pip').style.display = $('pipTag').style.display = studio ? 'none' : 'block';
+  $('headline').style.display = studio ? 'none' : 'block';
+  $('subs').style.display = studio ? 'none' : 'flex';
+  $('lower').style.display = inIntro ? 'block' : 'none';
+  $('outro').style.display = inOutro ? 'block' : 'none';
+  // диктор в студии: появление и лёгкое покачивание
+  const intro = ease(t / .6);
+  const bob = Math.sin(t * 2.1) * 6, tilt = Math.sin(t * 1.3) * 1.4;
+  const p = $('presenter');
+  p.style.left = '170px'; p.style.top = (430 + (1 - intro) * 120) + 'px'; p.style.width = '740px'; p.style.height = '925px';
+  p.style.opacity = studio ? (inIntro ? intro : 1) : 0;
+  for (const pre of ['', 'p-']) {
+    const head = document.getElementById(pre + 'head');
+    if (head) head.style.transform = `translateY(${bob}px) rotate(${tilt}deg)`;
+    const lids = document.getElementById(pre + 'lids');
+    if (lids) lids.style.display = blinkAt(t) ? 'inline' : 'none';
+  }
+  const m = mouthAt(t) || (t < .4 || t > T.end - .5 ? 'smile' : 'closed');
+  setMouth('', m); setMouth('p-', m);
+  // фото новости: медленный наезд
+  const nt = clamp((t - T.introEnd) / Math.max(1, T.outroStart - T.introEnd));
+  $('photo').style.transform = `scale(${1.04 + nt * .12}) translate(${-nt * 20}px, ${-nt * 30}px)`;
+  // заголовок въезжает
+  const h = ease((t - T.introEnd - .2) / .6);
+  $('headline').style.transform = `translateY(${(1 - h) * -40}px)`; $('headline').style.opacity = h;
+  const lw = ease((t - .5) / .6); $('lower').style.transform = `translateX(${(1 - lw) * -1100}px)`;
+  const o = ease((t - T.outroStart - .3) / .6); $('outro').style.opacity = o;
+  // субтитры: фраза целиком, текущее слово — золотым
+  const ph = R.phrases.find((x) => t >= x.start && t < x.end);
+  if (ph) {
+    $('subText').innerHTML = ph.words.map((wd) => `<span class="${t >= wd.end ? 'done' : t >= wd.start ? 'on' : 'todo'}">${wd.text}</span>`).join(' ');
+  } else $('subText').innerHTML = '';
+}
+window.render = render;
+render(0);
+</script>
+</body>
+</html>

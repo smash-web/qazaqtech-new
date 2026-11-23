@@ -157,3 +157,13 @@ class CMSClient:
 
     def update_telegram_settings(self, data: dict) -> None:
         self._req("POST", "/globals/telegram-settings", json=data)
+
+    # --- Рилсы ----------------------------------------------------------------------
+    def reels_settings(self) -> dict:
+        return self._req("GET", "/globals/reels-settings", params={"depth": 0})
+
+    def update_reels_settings(self, data: dict) -> None:
+        self._req("POST", "/globals/reels-settings", json=data)
+
+    def article(self, article_id: int | str) -> dict:
+        return self._req("GET", f"/articles/{article_id}", params={"depth": 1})

@@ -158,3 +158,19 @@
   ошибки (неверный токен, канал не найден, бот не админ) — в «Последняя ошибка» понятным текстом.
 - Учёт отправленного — `social_posts` с network = 'telegram' (повторно не публикуется).
 - Таблица `cms.telegram_settings` создана вручную, владелец — qtnews.
+
+## Рилсы с 2D-диктором (ноябрь 2026)
+
+- Настройки: админка → «Конвейер» → «Рилсы» (видит только developer): вкл/выкл, рилсов в сутки (≤3), диктор
+  (ведущая/ведущий), ID голоса и модель ElevenLabs (по умолчанию eleven_v3 — умеет казахский), API-ключ ElevenLabs,
+  куда публиковать (Instagram Reels, Telegram, черновик TikTok). Таблица `cms.reels_settings` и enum
+  `cms.enum_reels_settings_presenter` созданы вручную, владелец — qtnews.
+- Поток: GitHub Actions `.github/workflows/reels.yml` (10:30, 15:30, 20:30 по Алматы, плюс ручной запуск) →
+  `POST /api/run?step=reel_prepare` (pipeline/qtnews/reels.py: самая важная свежая статья с фото → Gemini пишет текст
+  → ElevenLabs /with-timestamps) → рендер `reels/` (render.py: HTML-шаблон + SVG-диктор → кадры Playwright → ffmpeg)
+  → видео в релиз `reels` репозитория → `POST /api/run?step=reel_publish` (IG Reels, Telegram sendVideo, TikTok inbox).
+- Авторизация Actions → конвейер: OIDC-токен GitHub (audience `techtalq-reels`, только reels.yml на main),
+  проверка в `qtnews/gh_oidc.py`. Для ручного запуска подходит и `Bearer CRON_SECRET`.
+- Диктор: `reels/presenter.py` (один SVG, группы `#m-*` — фазы рта, `#lids` — моргание, `#head` — покачивание).
+  Губы: буквы казахской кириллицы → формы рта по таймкодам ElevenLabs (render.visemes). Субтитры — только в новостной части.
+- Учёт: `social_posts` network = 'reel' (rendering → posted/failed, 2 попытки) и 'reel_instagram' / 'reel_telegram' / 'reel_tiktok'.

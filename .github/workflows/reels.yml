@@ -1,0 +1,38 @@
+# Рилсы с 2D-диктором: конвейер готовит текст и озвучку, здесь собирается видео и отдаётся на публикацию.
+# Секретов не нужно: конвейер проверяет OIDC-токен этого workflow, видео кладётся в релиз `reels`.
+# Расписание (UTC): 05:30, 10:30, 15:30 = 10:30, 15:30, 20:30 по Алматы. Вкл/выкл и лимит — в админке «Рилсы».
+name: reels
+
+on:
+  schedule:
+    - cron: "30 5,10,15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # загрузить видео в релиз
+  id-token: write   # OIDC-токен для конвейера
+
+concurrency:
+  group: reels
+  cancel-in-progress: false
+
+jobs:
+  reel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Шрифты и ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-inter > /dev/null
+      - name: Playwright
+        run: |
+          pip install -q playwright requests
+          python -m playwright install --with-deps chromium > /dev/null
+      - name: Рилс
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PIPELINE_URL: https://qazaqtech-pipeline.vercel.app
+        run: python reels/make_reel.py

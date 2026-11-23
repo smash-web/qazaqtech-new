@@ -15,6 +15,7 @@ import { Users } from './collections/Users'
 import { InstagramSettings } from './globals/InstagramSettings'
 import { TikTokSettings } from './globals/TikTokSettings'
 import { TelegramSettings } from './globals/TelegramSettings'
+import { ReelsSettings } from './globals/ReelsSettings'
 import { PipelineSettings } from './globals/PipelineSettings'
 import { SiteSettings } from './globals/SiteSettings'
 
@@ -35,7 +36,7 @@ export default buildConfig({
     },
   },
   collections: [Articles, Categories, Pages, Media, Sources, Glossary, Users],
-  globals: [SiteSettings, PipelineSettings, InstagramSettings, TikTokSettings, TelegramSettings],
+  globals: [SiteSettings, PipelineSettings, InstagramSettings, TikTokSettings, TelegramSettings, ReelsSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   db: postgresAdapter({
