@@ -67,8 +67,11 @@ def scene_times(job: dict) -> tuple[float, float, float, float | None]:
     return intro_end, outro_start, en[-1] + 0.9, headline
 
 
+PREVIEW = os.environ.get("PREVIEW", "").lower() in ("1", "true", "yes")
+
+
 def main() -> int:
-    prep = call("reel_prepare")
+    prep = call("reel_prepare", {"force": True} if PREVIEW else {})
     job = prep.get("job")
     if not job:
         print("Рилс не нужен:", {k: v for k, v in prep.items() if k != "seconds"})
@@ -115,6 +118,10 @@ def main() -> int:
         traceback.print_exc()
         call("reel_publish", {"article_id": aid, "error": f"{type(exc).__name__}: {exc}"[:300]})
         return 1
+    if PREVIEW:  # предпросмотр: видео в релизе, в соцсети не публикуем
+        call("reel_publish", {"article_id": aid, "preview_url": url})
+        print("ПРЕДПРОСМОТР:", url)
+        return 0
     res = call("reel_publish", {"article_id": aid, "video_url": url}, timeout=320)
     print(json.dumps({k: v for k, v in res.items() if k != "seconds"}, ensure_ascii=False))
     return 0

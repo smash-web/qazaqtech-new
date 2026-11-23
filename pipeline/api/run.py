@@ -103,7 +103,7 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
             if step == "telegram":
                 result["telegram"] = post_to_telegram(cfg, db, cms)
             if step == "reel_prepare":
-                result.update(prepare_reel(cfg, db, cms, llm))
+                result.update(prepare_reel(cfg, db, cms, llm, force=bool(payload.get("force"))))
             if step == "reel_publish":
                 result.update(publish_reel(cfg, db, cms, payload))
             result["seconds"] = round(time.time() - started, 1)

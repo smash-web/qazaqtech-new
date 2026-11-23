@@ -32,31 +32,40 @@ MAX_ATTEMPTS = 2
 STALE_RENDER = timedelta(hours=2)
 ELEVEN = "https://api.elevenlabs.io/v1"
 DEFAULT_VOICES = {"f": "EXAVITQu4vr4xnSDxMaL", "m": "JBFqnCBsd6RMkjVDRZzb"}  # премиум-голоса ElevenLabs по умолчанию
-# Как диктор произносит бренд и концовку (в субтитрах их нет — показываются только во вступлении/концовке)
-SPOKEN_BRAND = "Тек Ток"
-OUTRO = "Толығы біздің сайтта. Жазылыңыз!"
 
 SCRIPT_SYSTEM = (
-    "Сен — TechTalQ IT-жаңалықтар арнасының дикторына мәтін жазатын редакторсың. "
-    "Қазақ тілінде, әдеби, бірақ жанды сөйлеу тілінде жазасың. Тек берілген мақаладағы фактілерді қолдан, "
-    "ештеңе ойдан қоспа. Сандарды сөзбен жаз (мысалы, «екі жүз елу миллион»). Сілтеме, эмодзи, хэштег жазба. "
-    "Ағылшын атаулары (Apple, Nvidia) өз қалпында қалсын."
+    "Сен — Instagram Reels пен TikTok-қа арналған қазақ тіліндегі IT-жаңалықтар арнасының сценаристісің. "
+    "Мақсатың — адам бірінші секундта тоқтап, соңына дейін қарап, пікір жазып, арнаға жазылатындай мәтін. "
+    "Жанды сөйлеу тілінде, қысқа сөйлемдермен, «сен»/«сіз» деп көрерменге тікелей айт. Кіріспе, сәлемдесу, "
+    "«бүгін біз айтамыз» сияқты бос сөз жоқ — бірден іске. Тек мақаладағы фактілерді қолдан, ойдан қоспа, "
+    "асыра сілтеме. Сандарды сөзбен жаз. Сілтеме, эмодзи, хэштег жазба. Ағылшын атаулары өз қалпында."
 )
 SCRIPT_PROMPT = """Мақала:
 Тақырып: {title}
 Анонс: {excerpt}
 Мәтін: {body}
 
-Рилс үшін диктор мәтінін JSON түрінде жаз:
+Рилс сценарийін JSON түрінде жаз (барлығы 75–110 сөз, 35–45 секунд):
 {{
-  "teaser": "экрандағы қысқа тақырып, 38 таңбадан аспасын",
-  "headline": "жаңалықтың мәнін айтатын бір сөйлем, 8–14 сөз",
-  "body": "жаңалықтың толық мазмұны: 3–4 қысқа сөйлем, барлығы 45–70 сөз",
-  "subjects": ["жаңалықтағы нақты нысандар ағылшынша: компания, өнім, қала, ғимарат (1–3 атау, адам аты емес)"],
-  "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші сұрау", "үшінші сұрау"]
+  "hook": "алғашқы 2 секундта тоқтататын бір сөйлем: таңғалдыратын факт, сан немесе сұрақ (6–14 сөз)",
+  "lead": "не болғанын бір сөйлеммен түсіндір (10–18 сөз)",
+  "body": "неге маңызды: мәні, қарапайым адамға, Қазақстанға не өзгереді, қызықты деталь; 3–4 қысқа сөйлем, 40–65 сөз",
+  "question": "пікір жазуға шақыратын даулы немесе жеке сұрақ (6–12 сөз)",
+  "teaser": "экрандағы хук, 5–7 сөз, 40 таңбадан аспасын",
+  "subjects": ["нақты нысандар ағылшынша: компания, өнім, қала (1–3 атау, адам аты емес)"],
+  "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші", "үшінші"]
 }}
 subjects — бейнемұрағаттан нақты кадр іздеуге (мысалы: "Nvidia", "Stuttgart", "iPhone 17").
-broll — көрнекі нақты зат немесе әрекет (мысалы: "graphics card closeup", "iphone in hand", "server room lights"), "technology" сияқты жалпы сөз емес."""
+broll — көрнекі нақты зат не әрекет (мысалы: "graphics card closeup", "iphone in hand"), "technology" сияқты жалпы сөз емес."""
+SUBSCRIBE = "Пікіріңізді жазыңыз. Мұндай жаңалықтарды жіберіп алмау үшін жазылыңыз!"
+
+PICK_PROMPT = """Төмендегі соңғы IT-жаңалықтардың ішінен Instagram Reels пен TikTok-та ең көп қаралатын, талқыланатын
+бірін таңда: қарапайым адамға түсінікті, таңғалдыратын, күнделікті өмірге (смартфон, ақша, жұмыс, ЖИ, қауіпсіздік,
+танымал брендтер) қатысты, пікір тудыратын. Тар салалық, құрғақ қаржы немесе тек мамандарға қызық жаңалықты таңдама.
+
+{items}
+
+JSON: {{"id": таңдалған жаңалықтың id-і (сан), "why": "неге — бір сөйлем"}}"""
 
 
 class ElevenLabsError(RuntimeError):
@@ -207,27 +216,30 @@ def _clean(s: str) -> str:
 
 
 def write_script(llm: LLM, model: str, article: dict) -> dict:
-    data = complete_json(llm, model=model, system=SCRIPT_SYSTEM, max_tokens=1500, temperature=0.5,
+    data = complete_json(llm, model=model, system=SCRIPT_SYSTEM, max_tokens=2000, temperature=0.7,
                          prompt=SCRIPT_PROMPT.format(title=article.get("title", ""), excerpt=article.get("excerpt", ""),
                                                      body=lexical_text(article.get("content"))))
-    teaser = _clean(data.get("teaser") or article.get("title", ""))
-    headline, body = _clean(data.get("headline", "")), _clean(data.get("body", ""))
-    if len(body.split()) < 15 or not headline:
-        raise LLMError("ИИ вернул слишком короткий текст для рилса")
-    if len(teaser) > 42:
-        teaser = teaser[:41].rstrip() + "…"
-    intro = f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары. {headline}"
-    if not intro.endswith((".", "!", "?")):
-        intro += "."
+    hook, lead = _clean(data.get("hook", "")), _clean(data.get("lead", ""))
+    body, question = _clean(data.get("body", "")), _clean(data.get("question", ""))
+    teaser = _clean(data.get("teaser") or hook)
+    if not hook or not lead or len(body.split()) < 15:
+        raise LLMError("ИИ вернул неполный сценарий рилса")
+    end = lambda x: x if x.endswith((".", "!", "?", "…")) else x + "."  # noqa: E731
+    hook, lead, body = end(hook), end(lead), end(body)
+    if question and not question.endswith("?"):
+        question = question.rstrip(".!") + "?"
+    if len(teaser) > 44:
+        teaser = teaser[:43].rstrip() + "…"
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:3]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
-    return {"teaser": teaser, "intro": intro, "body": body, "outro": OUTRO, "broll": broll, "subjects": subjects}
+    return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body,
+            "outro": f"{question} {SUBSCRIBE}".strip(), "broll": broll, "subjects": subjects}
 
 
 def _ok_to_render(rec: dict | None, now: datetime) -> bool:
     if not rec:
         return True
-    if rec["status"] == "posted" or rec["attempts"] >= MAX_ATTEMPTS:
+    if rec["status"] in ("posted", "preview") or rec["attempts"] >= MAX_ATTEMPTS:
         return False
     if rec["status"] == "rendering":
         updated = _parse(rec.get("updated_at"))
@@ -235,13 +247,26 @@ def _ok_to_render(rec: dict | None, now: datetime) -> bool:
     return True
 
 
-def pick_article(cms: CMSClient, db: Database, settings: dict, now: datetime) -> dict | None:
+def pick_article(cms: CMSClient, db: Database, settings: dict, now: datetime, llm: LLM | None = None,
+                 model: str = "") -> dict | None:
     since = now - timedelta(hours=int(settings.get("lookbackHours") or 12))
     cands = [a for a in cms.published_since(since.isoformat()) if a.get("coverImage") and _ok_to_render(db.social_get(a["id"], REEL), now)]
     if not cands:
         return None
-    # главная новость: самая важная, при равенстве — самая свежая
-    return max(cands, key=lambda a: (float(a.get("importanceScore") or 0), a.get("publishedAt") or ""))
+    cands.sort(key=lambda a: (float(a.get("importanceScore") or 0), a.get("publishedAt") or ""), reverse=True)
+    if llm is not None and len(cands) > 1:
+        top = cands[:12]
+        items = "\n".join(f"id={a['id']}: {a.get('title', '')} — {(a.get('excerpt') or '')[:200]}" for a in top)
+        try:
+            pick = complete_json(llm, model=model, system="Сен — вирустық контент редакторысың.", max_tokens=300,
+                                 temperature=0.2, prompt=PICK_PROMPT.format(items=items))
+            chosen = next((a for a in top if str(a["id"]) == str(pick.get("id"))), None)
+            if chosen:
+                log.info("Рилс: выбрана статья %s — %s", chosen["id"], pick.get("why"))
+                return chosen
+        except LLMError as exc:
+            log.warning("Рилс: выбор новости ИИ не удался: %s", exc)
+    return cands[0]
 
 
 def _media_url(media: Any, site_url: str) -> str | None:
@@ -257,19 +282,20 @@ KZ_MONTHS = ["ҚАҢТАР", "АҚПАН", "НАУРЫЗ", "СӘУІР", "МАМ
 
 
 def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, eleven: ElevenLabsClient | None = None,
-                 now: datetime | None = None) -> dict:
+                 now: datetime | None = None, force: bool = False) -> dict:
+    """force — ручной запуск (предпросмотр): без проверки «Делать рилсы» и дневного лимита."""
     now = now or datetime.now(timezone.utc)
     s = cms.reels_settings()
-    if not s.get("enabled"):
+    if not s.get("enabled") and not force:
         return {"skip": "disabled"}
     key = (s.get("elevenlabsApiKey") or "").strip()
     if not key:
         return {"skip": "no elevenlabs key"}
-    if db.social_count_since(REEL, (now - timedelta(hours=24)).isoformat()) >= int(s.get("perDay") or 3):
+    if not force and db.social_count_since(REEL, (now - timedelta(hours=24)).isoformat()) >= int(s.get("perDay") or 3):
         return {"skip": "daily limit"}
     if llm is None:
         return {"skip": "no llm"}
-    article = pick_article(cms, db, s, now)
+    article = pick_article(cms, db, s, now, llm, cfg.writer_model)
     if not article:
         return {"skip": "no fresh articles"}
     aid = article["id"]
@@ -297,7 +323,7 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         "photo_credit": re.sub(r"^(Сурет|Фото|Photo)\s*:\s*", "", str((article.get("coverImage") or {}).get("credit") or "").split(" — ")[0]).strip()[:80],
         # где в тексте начинаются новость и концовка — по ним сцены переключаются
         "intro_chars": len(script["intro"]) + 1, "outro_char": len(script["intro"]) + 1 + len(script["body"]) + 1,
-        "headline_char": len(f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары. "),
+        "headline_char": len(script["hook"]) + 1,  # смена плана — на втором предложении вступления
         # бегущая строка — другие свежие заголовки
         "ticker": [a.get("title") for a in cms.published_since((now - timedelta(hours=24)).isoformat())
                    if a.get("id") != aid and a.get("title")][-6:][::-1],
@@ -379,6 +405,10 @@ def publish_reel(cfg: Config, db: Database, cms: CMSClient, payload: dict, ig: I
         cms.update_reels_settings({"lastError": f"{now:%d.%m %H:%M} UTC: сборка видео: {msg}"})
         db.log_run("reel_publish", {"article": aid, "error": msg})
         return {"failed": msg}
+    if payload.get("preview_url"):
+        db.social_save(aid, REEL, "preview", media_id=payload["preview_url"])
+        db.log_run("reel_publish", {"article": aid, "preview": payload["preview_url"]})
+        return {"preview": payload["preview_url"]}
     video_url = payload["video_url"]
     s = cms.reels_settings()
     article = cms.article(aid)

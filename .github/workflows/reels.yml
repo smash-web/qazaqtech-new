@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "30 5,10,15 * * *"
   workflow_dispatch:
+    inputs:
+      preview:
+        description: "Только собрать видео, не публиковать"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # загрузить видео в релиз
@@ -35,4 +40,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PIPELINE_URL: https://qazaqtech-pipeline.vercel.app
+          PREVIEW: ${{ inputs.preview }}
         run: python reels/make_reel.py

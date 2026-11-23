@@ -215,7 +215,7 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
                gender: str = "m") -> dict:
     chars, st, en = alignment["characters"], alignment["character_start_times_seconds"], alignment["character_end_times_seconds"]
     all_words = words(chars, st, en)
-    news_words = [w for w in all_words if intro_end - 0.05 <= w.start < outro_start]
+    news_words = [w for w in all_words if w.start >= intro_end - 0.05]  # субтитры с новости до конца (и вопрос в концовке)
     shots = plan_shots(intro_end, outro_start, duration, headline_start, sentence_starts(chars, st))
     return {
         "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
@@ -223,7 +223,7 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
         "hostSvg": host_svg(), "ticker": ticker or [], "broll": broll or [],
         "visemes": visemes(chars, st, en), "phrases": phrases(news_words, max_words=3, max_chars=18),
         "blinks": blinks(duration), "shots": shots,
-        "cuts": plan_cuts(shots, len(broll or []), [w.start for w in news_words]),
+        "cuts": plan_cuts(shots, len(broll or []), [w.start for w in news_words if w.start < outro_start]),
         "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration},
     }
 

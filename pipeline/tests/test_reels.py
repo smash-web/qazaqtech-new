@@ -5,8 +5,7 @@ import pytest
 
 from qtnews.config import Config
 from qtnews.db import Database
-from qtnews.reels import (OUTRO, REEL, SPOKEN_BRAND, lexical_text, pick_article, prepare_reel, publish_reel,
-                          write_script)
+from qtnews.reels import (REEL, SUBSCRIBE, lexical_text, pick_article, prepare_reel, publish_reel, write_script)
 
 NOW = datetime(2026, 11, 23, 10, 0, tzinfo=timezone.utc)
 BODY = "Apple компаниясы сот ісін реттеу үшін екі жүз елу миллион доллар төлейді. " * 2
@@ -24,12 +23,15 @@ def art(i, score=5, cover=True, **kw):
 
 
 class FakeLLM:
-    def __init__(self, body=BODY):
-        self.body = body
+    def __init__(self, body=BODY, pick=None):
+        self.body, self.pick = body, pick
 
     def complete(self, **kw):
-        return json.dumps({"teaser": "Apple 250 млн доллар төлейді", "headline": "Apple Siri кешігуі үшін сотқа ақша төлейді",
-                           "body": self.body})
+        if "id=" in kw.get("prompt", ""):
+            return json.dumps({"id": self.pick, "why": "қызық"})
+        return json.dumps({"hook": "Apple сотқа екі жүз елу миллион доллар төлейді", "lead": "Siri кешіккені үшін",
+                           "body": self.body, "question": "Сіз Siri-ді қолданасыз ба", "teaser": "Apple 250 млн доллар төлейді",
+                           "subjects": ["Apple"], "broll": ["iphone in hand"]})
 
 
 class FakeEleven:
@@ -87,10 +89,17 @@ def test_lexical_text():
     assert lexical_text(art(1)["content"]) == "Бірінші абзац.\nЕкінші абзац."
 
 
-def test_script_has_greeting_and_outro():
+def test_script_hook_first_and_question_outro():
     s = write_script(FakeLLM(), "m", art(1))
-    assert s["intro"].startswith(f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары.") and s["outro"] == OUTRO
-    assert len(s["teaser"]) <= 42
+    assert s["intro"] == "Apple сотқа екі жүз елу миллион доллар төлейді. Siri кешіккені үшін."
+    assert s["outro"] == f"Сіз Siri-ді қолданасыз ба? {SUBSCRIBE}" and s["subjects"] == ["Apple"]
+    assert len(s["teaser"]) <= 44
+
+
+def test_pick_uses_ai_choice(db):
+    cms = FakeCMS(settings(), [art(1, score=9), art(2, score=4), art(3, score=7)])
+    assert pick_article(cms, db, cms.settings, NOW, FakeLLM(pick=2), "m")["id"] == 2
+    assert pick_article(cms, db, cms.settings, NOW, FakeLLM(pick=99), "m")["id"] == 1
 
 
 def test_pick_prefers_important_with_cover(db):
@@ -103,8 +112,9 @@ def test_prepare_returns_job_with_scene_boundaries(db):
     job = prepare_reel(Config(), db, cms, FakeLLM(), el, now=NOW)["job"]
     text = job["text"]
     assert text[job["intro_chars"]:].startswith("Apple компаниясы")
-    assert text[job["outro_char"]:] == OUTRO
-    assert text[job["headline_char"]:].startswith("Apple Siri")
+    assert prepare_reel(Config(), db, FakeCMS(settings(enabled=False), [art(5)]), FakeLLM(), el, now=NOW, force=True)["job"]["article_id"] == 5
+    assert text[job["outro_char"]:].startswith("Сіз Siri-ді") and text.endswith(SUBSCRIBE)
+    assert text[job["headline_char"]:].startswith("Siri кешіккені")
     assert job["photo_url"] == "https://techtalq.kz/api/media/file/p-hero.jpg"
     assert job["date_label"] == "23 ҚАРАША" and el.calls[0][1] == "JBFqnCBsd6RMkjVDRZzb"
     assert db.social_get(1, REEL)["status"] == "rendering"
@@ -117,7 +127,7 @@ def test_prepare_skips(db):
     assert prepare_reel(Config(), db, FakeCMS(settings(elevenlabsApiKey=""), [art(1)]), FakeLLM(), now=NOW)["skip"] == "no elevenlabs key"
     cms = FakeCMS(settings(), [art(1)])
     r = prepare_reel(Config(), db, cms, FakeLLM(body="қысқа"), FakeEleven(), now=NOW)
-    assert r["skip"] == "error" and "короткий" in cms.settings["lastError"]
+    assert r["skip"] == "error" and "неполный" in cms.settings["lastError"]
 
 
 class FakeIG:
@@ -186,3 +196,10 @@ def test_commons_transcoded_url():
     from qtnews.reels import _transcoded
     assert _transcoded("https://upload.wikimedia.org/wikipedia/commons/a/ab/Nvidia_GPU.webm", 720) == \
         "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/ab/Nvidia_GPU.webm/Nvidia_GPU.webm.720p.vp9.webm"
+
+
+def test_preview_is_not_published_or_repicked(db):
+    cms = FakeCMS(settings(), [art(1)])
+    r = publish_reel(Config(), db, cms, {"article_id": 1, "preview_url": "https://x/r.mp4"}, now=NOW)
+    assert r == {"preview": "https://x/r.mp4"} and db.social_get(1, REEL)["status"] == "preview"
+    assert pick_article(cms, db, cms.settings, NOW) is None

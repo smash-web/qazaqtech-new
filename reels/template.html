@@ -171,7 +171,7 @@ function render(t) {
   const tw = Math.max(1, $('tickText').scrollWidth), run = 1000 - (t * 150) % (tw + 1000);
   $('tickText').style.left = run + 'px';
   const ph = R.phrases.find((x) => t >= x.start && t < x.end);
-  if (ph && !inIntro && !inOutro) {
+  if (ph && !inIntro) {
     $('capText').innerHTML = ph.words.map((wd) => {
       const pop = back((t - wd.start) / .16), cls = t >= wd.start && t < wd.end + .05 ? 'on' : t < wd.start ? 'todo' : '';
       return `<span class="${cls}" style="transform:scale(${t < wd.start ? .6 : .75 + .25 * pop})">${wd.text}</span>`;
