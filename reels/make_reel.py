@@ -78,6 +78,9 @@ def main() -> int:
         return 0
     aid = job["article_id"]
     print(f"Статья {aid}: {job['title']}")
+    print("Хук на экране:", job.get("teaser"))
+    print("Текст диктора:", job.get("text"))
+    print("Запросы видео:", job.get("queries"))
     try:
         work = Path(tempfile.mkdtemp(prefix="reel-"))
         audio = work / "voice.mp3"
