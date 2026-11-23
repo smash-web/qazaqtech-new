@@ -201,9 +201,12 @@ def broll_frames(clips: list[Path], out_dir: Path, seconds: float = 18, fps: int
         vw, vh = (int(probe[0]), int(probe[1])) if len(probe) == 2 and all(x.isdigit() for x in probe) else (W, H)
         if vw > vh * 0.8:
             # горизонтальное видео: целиком по ширине, сзади — размытая увеличенная копия (без обрезки сюжета)
-            top = 330
+            # кадр по ширине ×1.4 (видно ~70% сюжета) — полоса выше, но без сильного увеличения
+            fw = int(W * 1.4) // 2 * 2
+            fh = int(fw * vh / vw) // 2 * 2
+            top = max(260, (H - fh) // 2 - 120)
             vf = (f"split[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:3,"
-                  f"eq=brightness=-0.18[bg];[b]scale={W}:-2[fg];[bg][fg]overlay=0:{top},fps={fps}")
+                  f"eq=brightness=-0.18[bg];[b]scale={fw}:{fh},crop={W}:{fh}[fg];[bg][fg]overlay=0:{top},fps={fps}")
         else:
             vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={fps}"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-t", str(seconds), "-i", str(clip),
@@ -264,15 +267,19 @@ def render_frames(reel: dict, out_dir: Path, fps: int = FPS, times: list[float] 
 def render_video(reel: dict, audio: Path, out: Path, fps: int = FPS, music: Path | None = None) -> Path:
     tmp = Path(tempfile.mkdtemp(prefix="reel-"))
     try:
-        render_frames(reel, tmp, fps)
+        frames = render_frames(reel, tmp, fps)
+        dur = len(frames) / fps
         cmd = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(tmp / "f%05d.jpg"), "-i", str(audio)]
+        voice = "acompressor=threshold=-20dB:ratio=3:attack=5:release=80,loudnorm=I=-14:TP=-1.5:LRA=7"
         if music:
             cmd += ["-stream_loop", "-1", "-i", str(music), "-filter_complex",
-                    "[2:a]volume=0.12[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[a]", "-map", "0:v", "-map", "[a]"]
+                    f"[1:a]{voice}[v];[2:a]volume=0.12[m];[v][m]amix=inputs=2:duration=longest:dropout_transition=2,apad[a]",
+                    "-map", "0:v", "-map", "[a]"]
         else:
-            cmd += ["-map", "0:v", "-map", "1:a"]
-        cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(fps),
-                "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-shortest", "-movflags", "+faststart", str(out)]
+            cmd += ["-map", "0:v", "-map", "1:a", "-af", f"{voice},apad"]
+        # длина ролика = длина картинки: голос выровнен до −14 LUFS, концовка не обрезается
+        cmd += ["-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+                "-r", str(fps), "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-movflags", "+faststart", str(out)]
         subprocess.run(cmd, check=True)
         return out
     finally:
