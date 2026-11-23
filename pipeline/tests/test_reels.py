@@ -38,7 +38,7 @@ class FakeEleven:
     def __init__(self):
         self.calls = []
 
-    def speak(self, text, voice, model):
+    def speak(self, text, voice, model, stability=0.5):
         self.calls.append((text, voice, model))
         return {"audio_base64": "QUJD", "alignment": {"characters": list(text), "character_start_times_seconds": [0] * len(text),
                                                      "character_end_times_seconds": [0.1] * len(text)}}
@@ -222,3 +222,11 @@ def test_pixabay_picks_large_and_hides_key(monkeypatch):
     monkeypatch.setattr(reels.requests, "get", lambda *a, **k: Resp())
     assert reels.pixabay_clips("k", ["server"], "ua", want=1) == [
         {"url": "big", "query": "server", "duration": 14, "page": "https://pixabay.com/v/2", "credit": "Bob / Pixabay"}]
+
+
+def test_tags_hidden_on_screen():
+    class L(FakeLLM):
+        def complete(self, **kw):
+            return json.dumps({"hook": "[excited] Apple сотқа ақша төлейді", "lead": "Siri үшін", "body": BODY, "question": "Қалай ойлайсыз"})
+    s = write_script(L(), "m", art(1), tags=True)
+    assert s["teaser"] == "Apple сотқа ақша төлейді." and s["intro"].startswith("[excited]")

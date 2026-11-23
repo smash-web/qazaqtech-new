@@ -43,6 +43,24 @@ export const ReelsSettings: GlobalConfig = {
       ],
     },
     {
+      type: 'row',
+      fields: [
+        {
+          name: 'voiceStyle', label: 'Подача голоса', type: 'select', defaultValue: 'natural',
+          options: [
+            { label: 'Живая, эмоциональная', value: 'creative' },
+            { label: 'Естественная', value: 'natural' },
+            { label: 'Ровная, дикторская', value: 'robust' },
+          ],
+          admin: { description: 'Для модели eleven_v3: насколько свободно голос играет интонацией.' },
+        },
+        {
+          name: 'audioTags', label: 'ИИ расставляет теги эмоций ([excited], [pause]…)', type: 'checkbox', defaultValue: false,
+          admin: { description: 'Только для eleven_v3. На экране и в субтитрах теги не видны.' },
+        },
+      ],
+    },
+    {
       name: 'elevenlabsApiKey', label: 'API-ключ ElevenLabs', type: 'text',
       admin: { placeholder: 'sk_…', description: 'elevenlabs.io → Developers → API Keys. Никому не пересылайте.' },
     },

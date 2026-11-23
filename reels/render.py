@@ -46,6 +46,18 @@ def host_svg() -> str:
     return mod.overlay_svg()
 
 
+def strip_tags(chars: list[str]) -> list[str]:
+    """Теги ElevenLabs v3 ([excited], [pause] …) не произносятся — в субтитрах и для губ считаем их пробелами."""
+    out, inside = [], False
+    for ch in chars:
+        if ch == "[":
+            inside = True
+        out.append(" " if inside else ch)
+        if ch == "]":
+            inside = False
+    return out
+
+
 def visemes(chars: list[str], starts: list[float], ends: list[float]) -> list[list]:
     """Таймкоды символов → [[начало, конец, форма рта]]; паузы — рот закрыт."""
     out: list[list] = []
@@ -200,9 +212,18 @@ def broll_frames(clips: list[Path], out_dir: Path, seconds: float = 18, fps: int
     for i, clip in enumerate(clips):
         d = out_dir / f"b{i}"
         d.mkdir(parents=True, exist_ok=True)
+        probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                                "-of", "csv=p=0", str(clip)], capture_output=True, text=True).stdout.strip().split(",")
+        vw, vh = (int(probe[0]), int(probe[1])) if len(probe) == 2 and all(x.isdigit() for x in probe) else (W, H)
+        if vw > vh * 0.8:
+            # горизонтальное видео: целиком по ширине, сзади — размытая увеличенная копия (без обрезки сюжета)
+            top = 330
+            vf = (f"split[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:3,"
+                  f"eq=brightness=-0.18[bg];[b]scale={W}:-2[fg];[bg][fg]overlay=0:{top},fps={fps}")
+        else:
+            vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={fps}"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-t", str(seconds), "-i", str(clip),
-                        "-vf", f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={fps}",
-                        "-q:v", "3", str(d / "%05d.jpg")], check=True)
+                        "-vf", vf, "-q:v", "3", str(d / "%05d.jpg")], check=True)
         n = len(list(d.glob("*.jpg")))
         if n:
             res.append({"dir": d.resolve().as_uri(), "count": n, "src": i})
@@ -214,6 +235,7 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
                ticker: list[str] | None = None, broll: list[dict] | None = None, photo_credit: str = "",
                gender: str = "m") -> dict:
     chars, st, en = alignment["characters"], alignment["character_start_times_seconds"], alignment["character_end_times_seconds"]
+    chars = strip_tags(chars)
     all_words = words(chars, st, en)
     news_words = [w for w in all_words if w.start >= intro_end - 0.05]  # субтитры с новости до конца (и вопрос в концовке)
     shots = plan_shots(intro_end, outro_start, duration, headline_start, sentence_starts(chars, st))

@@ -82,12 +82,13 @@ class ElevenLabsClient:
         self.session.headers.update({"xi-api-key": api_key, "User-Agent": user_agent})
         self.timeout = timeout
 
-    def speak(self, text: str, voice_id: str, model: str) -> dict:
-        """Озвучка с таймкодами символов: {audio_base64, alignment: {characters, *_times_seconds}}."""
+    def speak(self, text: str, voice_id: str, model: str, stability: float = 0.5) -> dict:
+        """Озвучка с таймкодами символов: {audio_base64, alignment: {characters, *_times_seconds}}.
+        stability: 0 — живее и эмоциональнее (v3 «Creative»), 0.5 — естественно, 1 — ровно."""
         resp = self.session.post(f"{ELEVEN}/text-to-speech/{voice_id}/with-timestamps", timeout=self.timeout,
                                  params={"output_format": "mp3_44100_128"},
                                  json={"text": text, "model_id": model,
-                                       "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.25}})
+                                       "voice_settings": {"stability": stability, "similarity_boost": 0.8, "style": 0.35}})
         if resp.status_code >= 400:
             try:
                 detail = resp.json().get("detail")
@@ -260,20 +261,25 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").replace("«", "").replace("»", "")).strip()
 
 
-def write_script(llm: LLM, model: str, article: dict) -> dict:
+TAGS_RULE = ("\nҮн тегтері: hook, lead, body, question ішінде ElevenLabs v3 тегтерін қолдан — сөйлем алдында "
+             "[excited], [curious], [serious], [surprised], [thoughtful] немесе үзіліс үшін [pause]. Әр өріске 1–2 тегтен "
+             "артық емес, тегтер тек ағылшынша, төртбұрышты жақшада.")
+
+
+def write_script(llm: LLM, model: str, article: dict, tags: bool = False) -> dict:
     data = complete_json(llm, model=model, system=SCRIPT_SYSTEM, max_tokens=2000, temperature=0.7,
                          prompt=SCRIPT_PROMPT.format(title=article.get("title", ""), excerpt=article.get("excerpt", ""),
-                                                     body=lexical_text(article.get("content"))))
+                                                     body=lexical_text(article.get("content"))) + (TAGS_RULE if tags else ""))
     hook, lead = _clean(data.get("hook", "")), _clean(data.get("lead", ""))
     body, question = _clean(data.get("body", "")), _clean(data.get("question", ""))
-    teaser = hook  # на экране — ровно то, что говорит диктор (никаких отдельных «заголовков» от ИИ)
     if not hook or not lead or len(body.split()) < 15:
         raise LLMError("ИИ вернул неполный сценарий рилса")
     end = lambda x: x if x.endswith((".", "!", "?", "…")) else x + "."  # noqa: E731
     hook, lead, body = end(hook), end(lead), end(body)
+    # на экране — ровно то, что говорит диктор (без тегов эмоций)
+    teaser = re.sub(r"\s*\[[^\]]*\]\s*", " ", hook).strip()
     if question and not question.endswith("?"):
         question = question.rstrip(".!") + "?"
-    teaser = hook
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:3]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
     return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body,
@@ -347,12 +353,13 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     aid = article["id"]
     db.social_save(aid, REEL, "rendering", attempt=True)
     try:
-        script = write_script(llm, cfg.writer_model, article)
+        script = write_script(llm, cfg.writer_model, article, tags=bool(s.get("audioTags")))
         gender = "f" if s.get("presenter") == "f" else "m"
         voice = (s.get("voiceId") or "").strip() or DEFAULT_VOICES[gender]
         text = f"{script['intro']} {script['body']} {script['outro']}"
         eleven = eleven or ElevenLabsClient(key, cfg.user_agent)
-        tts = eleven.speak(text, voice, (s.get("model") or "eleven_v3").strip())
+        stability = {"creative": 0.0, "natural": 0.5, "robust": 1.0}.get(s.get("voiceStyle") or "natural", 0.5)
+        tts = eleven.speak(text, voice, (s.get("model") or "eleven_v3").strip(), stability)
     except (LLMError, ElevenLabsError, requests.RequestException) as exc:
         msg = str(exc)[:300]
         db.social_save(aid, REEL, "failed", error=msg)

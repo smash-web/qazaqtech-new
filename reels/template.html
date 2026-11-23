@@ -139,7 +139,7 @@ function render(t) {
       const src = `${clip.dir}/${String(i + 1).padStart(5, '0')}.jpg`;
       if ($('clip').getAttribute('src') !== src) $('clip').setAttribute('src', src);
       $('clip').style.display = 'block'; $('photo').style.display = 'none';
-      $('clip').style.transform = `scale(${z}) translateX(${dx}px)`;
+      $('clip').style.transform = `scale(${1 + .015 * k})`;  // видео не увеличиваем — сюжет должен быть виден
       $('credit').innerHTML = `<b>ИЛЛЮСТРАЦИЯЛЫҚ КАДРЛАР</b><br>Видео: ${clip.credit || ''}`;
     } else {
       $('clip').style.display = 'none'; $('photo').style.display = 'block';
