@@ -197,6 +197,10 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         "photo_url": _media_url(article.get("coverImage"), cfg.site_url), "presenter": gender,
         # где в тексте начинаются новость и концовка — по ним сцены переключаются
         "intro_chars": len(script["intro"]) + 1, "outro_char": len(script["intro"]) + 1 + len(script["body"]) + 1,
+        "headline_char": len(f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары. "),
+        # бегущая строка — другие свежие заголовки
+        "ticker": [a.get("title") for a in cms.published_since((now - timedelta(hours=24)).isoformat())
+                   if a.get("id") != aid and a.get("title")][-6:][::-1],
         "text": text, "audio_base64": tts["audio_base64"], "alignment": tts["alignment"],
     }
     db.log_run("reel_prepare", {"article": aid, "chars": len(text)})

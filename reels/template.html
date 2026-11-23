@@ -7,132 +7,169 @@
   html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0B1B3A; }
   body { font-family: Inter, 'Helvetica Neue', Arial, sans-serif; color: #fff; }
   .layer { position: absolute; inset: 0; }
-  /* Студия: картинка диктора на весь кадр */
+  /* Студия: картинка 941×1672 (файл вдвое крупнее), камера — transform */
   #studio { overflow: hidden; background: #0B1B3A; }
-  .hostbox { position: absolute; left: 0; top: 0; width: 529px; height: 941px; transform-origin: 0 0; }
-  .hostbox img { position: absolute; left: 0; top: 0; width: 529px; height: 941px; }
-  #studio .topshade { position: absolute; left: 0; right: 0; top: 0; height: 420px; background: linear-gradient(rgba(11,27,58,.85), rgba(11,27,58,0)); }
-  #studio .botshade { position: absolute; left: 0; right: 0; bottom: 0; height: 900px; background: linear-gradient(rgba(11,27,58,0), rgba(11,27,58,.55) 55%, rgba(11,27,58,.8)); }
+  .hostbox { position: absolute; left: 0; top: 0; width: 941px; height: 1672px; transform-origin: 0 0; }
+  .hostbox img { position: absolute; left: 0; top: 0; width: 941px; height: 1672px; }
+  #sweep { position: absolute; top: -200px; bottom: -200px; width: 260px; left: -400px; transform: skewX(-18deg);
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(160,220,255,.16), rgba(255,255,255,0)); mix-blend-mode: screen; }
+  #studio .topshade { position: absolute; left: 0; right: 0; top: 0; height: 380px; background: linear-gradient(rgba(11,27,58,.8), rgba(11,27,58,0)); }
+  #studio .botshade { position: absolute; left: 0; right: 0; bottom: 0; height: 760px; background: linear-gradient(rgba(11,27,58,0), rgba(11,27,58,.5) 50%, rgba(11,27,58,.85)); }
   /* Новость */
   #news { overflow: hidden; }
-  #photo { position: absolute; left: -60px; top: -60px; width: 1200px; height: 2040px; background-size: cover; background-position: center; }
+  #photo { position: absolute; left: -80px; top: -80px; width: 1240px; height: 2080px; background-size: cover; background-position: center; }
   #news .shade { position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(11,27,58,.92) 0%, rgba(11,27,58,.55) 26%, rgba(11,27,58,.10) 44%, rgba(11,27,58,.30) 60%, rgba(11,27,58,.92) 82%, #0B1B3A 100%); }
-  #pip { position: absolute; left: 56px; top: 1250px; width: 380px; height: 380px; border-radius: 50%; overflow: hidden;
-    background: radial-gradient(#13305E, #0B1B3A); border: 10px solid #00AFCA; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
-  #pip .hostbox { transform: translate(-103px, -142px) scale(1.2); }
-  #pipTag { position: absolute; left: 80px; top: 1610px; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 26px;
+    background: linear-gradient(180deg, rgba(11,27,58,.92) 0%, rgba(11,27,58,.55) 26%, rgba(11,27,58,.10) 44%, rgba(11,27,58,.30) 60%, rgba(11,27,58,.92) 80%, #0B1B3A 100%); }
+  #pip { position: absolute; left: 56px; top: 1220px; width: 380px; height: 380px; border-radius: 50%; overflow: hidden;
+    background: #0B1B3A; border: 10px solid #00AFCA; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+  #pip .hostbox { transform: translate(-270px, -452px) scale(.95); }
+  #pipTag { position: absolute; left: 80px; top: 1580px; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 26px;
     letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; }
   /* Общие элементы */
   #top { position: absolute; left: 64px; right: 64px; top: 200px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { display: flex; align-items: center; gap: 16px; font-size: 44px; font-weight: 800; letter-spacing: -.5px; }
+  .logo { display: flex; align-items: center; gap: 16px; font-size: 44px; font-weight: 800; letter-spacing: -.5px; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
   .logo b { color: #00AFCA; }
-  .live { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.18);
+  .live { display: flex; align-items: center; gap: 12px; background: rgba(11,27,58,.55); border: 2px solid rgba(255,255,255,.22);
     padding: 10px 20px; border-radius: 999px; font-size: 26px; font-weight: 700; letter-spacing: 1.5px; }
   .live i { width: 14px; height: 14px; border-radius: 50%; background: #FF4D4D; display: block; }
   #headline { position: absolute; left: 64px; right: 64px; top: 330px; }
   .chip { display: inline-block; background: #00AFCA; color: #0B1B3A; font-weight: 800; font-size: 28px; letter-spacing: 2.5px;
     padding: 10px 18px; border-radius: 10px; }
-  #headline h1 { margin: 22px 0 0; font-size: 62px; line-height: 1.1; letter-spacing: -1.2px; font-weight: 800; }
+  #headline h1 { margin: 22px 0 0; font-size: 62px; line-height: 1.1; letter-spacing: -1.2px; font-weight: 800; text-shadow: 0 4px 18px rgba(0,0,0,.5); }
   #headline h1 em { font-style: normal; color: #00AFCA; }
-  #lower { position: absolute; left: 70px; right: 70px; top: 1180px; }
+  #lower { position: absolute; left: 60px; right: 60px; top: 1250px; }
   #lower .bar { display: inline-block; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 30px; letter-spacing: 2px; padding: 12px 22px; border-radius: 12px 12px 0 0; }
-  #lower .title { background: rgba(11,27,58,.92); border-left: 10px solid #00AFCA; padding: 24px 28px; font-size: 46px; font-weight: 800; line-height: 1.15; border-radius: 0 14px 14px 14px; }
-  #subs { position: absolute; left: 470px; right: 64px; top: 1270px; min-height: 300px; display: flex; align-items: center; }
+  #lower .title { background: rgba(11,27,58,.92); border-left: 10px solid #00AFCA; padding: 24px 28px; font-size: 48px; font-weight: 800; line-height: 1.15; border-radius: 0 14px 14px 14px; }
+  #subs { position: absolute; left: 470px; right: 64px; top: 1240px; min-height: 300px; display: flex; align-items: center; }
+  #subs.center { left: 70px; right: 70px; top: 1210px; min-height: 0; justify-content: center; text-align: center; }
+  #subs.center p { background: rgba(11,27,58,.78); padding: 18px 26px; border-radius: 18px; }
   #subs p { margin: 0; font-size: 50px; font-weight: 800; line-height: 1.22; text-shadow: 0 4px 18px rgba(0,0,0,.6); }
   #subs span.on { color: #FFC72C; }
   #subs span.done { color: #fff; }
   #subs span.todo { color: rgba(255,255,255,.55); }
-  #wipe { position: absolute; top: 0; bottom: 0; width: 1400px; left: -1500px; background: #00AFCA; transform: skewX(-12deg); }
+  /* бегущая строка */
+  #ticker { position: absolute; left: 0; right: 0; top: 1640px; height: 76px; display: flex; background: rgba(11,27,58,.94); border-top: 4px solid #00AFCA; overflow: hidden; }
+  #ticker .lbl { flex: 0 0 auto; background: #00AFCA; color: #0B1B3A; font-weight: 800; font-size: 28px; letter-spacing: 2px; padding: 0 22px; display: flex; align-items: center; z-index: 1; }
+  #ticker .run { position: relative; flex: 1; overflow: hidden; }
+  #ticker .run div { position: absolute; top: 0; height: 72px; display: flex; align-items: center; white-space: nowrap; font-size: 30px; font-weight: 600; color: #DCE7F5; }
+  #ticker .run b { color: #FFC72C; margin: 0 22px; }
+  #wipe { position: absolute; top: 0; bottom: 0; width: 1400px; left: -3000px; background: #00AFCA; transform: skewX(-12deg); }
   #wipe::after { content: ''; position: absolute; top: 0; bottom: 0; right: -90px; width: 90px; background: #FFC72C; }
-  #outro .cta { position: absolute; left: 70px; right: 70px; top: 1180px; height: 260px; border-radius: 24px; background: rgba(11,27,58,.9); border-top: 6px solid #FFC72C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+  #outro .cta { position: absolute; left: 70px; right: 70px; top: 1250px; height: 250px; border-radius: 24px; background: rgba(11,27,58,.9); border-top: 6px solid #FFC72C;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
   #outro .cta .site { background: #FFC72C; color: #0B1B3A; font-size: 54px; font-weight: 800; padding: 16px 28px; border-radius: 16px; }
   #outro .cta .follow { font-size: 40px; font-weight: 700; color: #C9D6E8; }
 </style>
 </head>
 <body>
   <div id="news" class="layer"><div id="photo"></div><div class="shade"></div></div>
-  <div id="studio" class="layer"><div class="hostbox" id="hostMain"></div><div class="topshade"></div><div class="botshade"></div></div>
+  <div id="studio" class="layer"><div class="hostbox" id="hostMain"></div><div id="sweep"></div><div class="topshade"></div><div class="botshade"></div></div>
   <div id="pip"><div class="hostbox" id="hostPip"></div></div>
   <div id="pipTag">TECHTALQ</div>
   <div id="top">
     <div class="logo"><svg width="54" height="54" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg><span>TechTal<b>Q</b></span></div>
-    <div class="live"><i></i><span id="dateLabel"></span></div>
+    <div class="live"><i id="dot"></i><span id="dateLabel"></span></div>
   </div>
   <div id="headline"><span class="chip" id="cat"></span><h1 id="title"></h1></div>
   <div id="lower"><span class="bar">IT ЖАҢАЛЫҚТАРЫ</span><div class="title" id="teaser"></div></div>
   <div id="subs"><p id="subText"></p></div>
-  <div id="outro" class="layer" style="pointer-events:none"><div class="cta"><span class="site">techtalq.kz</span><span class="follow">Жазылыңыз — @techtalq.kz</span></div></div>
+  <div id="ticker"><span class="lbl">ЖАҢАЛЫҚТАР</span><div class="run"><div id="tickText"></div></div></div>
+  <div id="outro" class="layer"><div class="cta"><span class="site">techtalq.kz</span><span class="follow">Жазылыңыз — @techtalq.kz</span></div></div>
+  <div id="flash"></div>
   <div id="wipe"></div>
 <script>
 /* Данные ролика подставляет render.py: window.REEL = {...} */
 const R = window.REEL;
 const $ = (id) => document.getElementById(id);
 $('hostMain').innerHTML = `<img src="${R.hostImage}">` + R.hostSvg;
-$('hostPip').innerHTML = `<img src="${R.hostImage}">` + R.hostSvg.replace(/id="/g, 'id="p-');
+$('hostPip').innerHTML = `<img src="${R.hostImage}">` + R.hostSvg.replace(/id="/g, 'id="p-').replace(/url\(#/g, 'url(#p-');
 $('photo').style.backgroundImage = `url(${R.photo})`;
 $('cat').textContent = R.category;
 $('dateLabel').textContent = R.dateLabel;
 $('teaser').textContent = R.teaser;
-{ // заголовок: последние слова бирюзовым
-  const w = R.title.split(' '); const tail = w.splice(Math.max(2, w.length - 3));
-  $('title').innerHTML = w.join(' ') + ' <em>' + tail.join(' ') + '</em>';
-}
+{ const w = R.title.split(' '); const tail = w.splice(Math.max(2, w.length - 3)); $('title').innerHTML = w.join(' ') + ' <em>' + tail.join(' ') + '</em>'; }
+$('tickText').innerHTML = (R.ticker && R.ticker.length ? R.ticker : [R.title]).map((x) => `<b>●</b>${x}`).join('') + '<b>●</b>';
+const tickW = () => $('tickText').scrollWidth;
+
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ease = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, x) => a + (b - a) * x;
 const MOUTHS = ['closed', 'small', 'mid', 'wide', 'o', 'smile'];
-function setMouth(prefix, m) {
-  for (const k of MOUTHS) { const el = document.getElementById(prefix + 'm-' + k); if (el) el.style.display = k === m ? 'inline' : 'none'; }
+function setMouth(prefix, m) { for (const k of MOUTHS) { const el = document.getElementById(prefix + 'm-' + k); if (el) el.style.display = k === m ? 'inline' : 'none'; } }
+function mouthAt(t) { for (const v of R.visemes) { if (t >= v[0] && t < v[1]) return v[2]; } return null; }
+function blinkAt(t) { for (const b of R.blinks) { if (t >= b && t < b + 0.12) return true; } return false; }
+
+/* Планы камеры: zoom — во сколько раз крупнее общего плана, (fx, fy) — точка картинки, (px, py) — где она в кадре */
+const CAMS = {
+  wide:   { zoom: 1.00, fx: 470, fy: 836, px: 540, py: 960 },
+  wide2:  { zoom: 1.12, fx: 470, fy: 800, px: 540, py: 930 },
+  medium: { zoom: 1.55, fx: 472, fy: 760, px: 540, py: 860 },
+  medium2:{ zoom: 1.70, fx: 472, fy: 745, px: 540, py: 840 },
+  close:  { zoom: 2.30, fx: 473, fy: 670, px: 540, py: 800 },
+  close2: { zoom: 2.55, fx: 473, fy: 665, px: 540, py: 790 },
+  side:   { zoom: 1.85, fx: 520, fy: 700, px: 420, py: 820 },
+};
+function camTransform(c, t) {
+  const base = 1080 / 941, sc = base * c.zoom;
+  const sway = Math.sin(t * .7) * 3, bob = Math.sin(t * 1.1) * 2.5;
+  let ox = c.px - c.fx * sc + sway, oy = c.py - c.fy * sc + bob;
+  ox = Math.min(0, Math.max(1080 - 941 * sc, ox)); oy = Math.min(0, Math.max(1920 - 1672 * sc, oy));
+  return `translate(${ox}px, ${oy}px) scale(${sc})`;
 }
-function mouthAt(t) {
-  // R.visemes: [[start, end, shape], ...] по таймкодам озвучки
-  for (const v of R.visemes) { if (t >= v[0] && t < v[1]) return v[2]; }
-  return null;
-}
-function blinkAt(t) { // моргание раз в ~3,5 с, 0,12 с
-  for (const b of R.blinks) { if (t >= b && t < b + 0.12) return true; }
-  return false;
-}
+function mixCam(a, b, x) { const o = {}; for (const k in a) o[k] = lerp(a[k], b[k], x); return o; }
+
 function render(t) {
-  const T = R.timeline;  // {introEnd, outroStart, end}
-  const inIntro = t < T.introEnd, inOutro = t >= T.outroStart;
-  const wipeIn = clamp((t - (T.introEnd - .45)) / .9), wipeOut = clamp((t - (T.outroStart - .45)) / .9);
-  // шторка-переход
-  const w = (t < T.outroStart - .6) ? wipeIn : wipeOut;
-  $('wipe').style.left = (w <= 0 || w >= 1) ? '-3000px' : (-1700 + w * 3400) + 'px';
-  const studio = inIntro || inOutro;
+  const shot = R.shots.find((s) => t >= s.start && t < s.end) || R.shots[R.shots.length - 1];
+  const si = R.shots.indexOf(shot), local = (t - shot.start) / Math.max(.01, shot.end - shot.start);
+  const studio = shot.type === 'studio';
+  const T = R.timeline, inIntro = t < T.introEnd, inOutro = t >= T.outroStart;
   $('studio').style.display = studio ? 'block' : 'none';
   $('news').style.display = studio ? 'none' : 'block';
   $('pip').style.display = $('pipTag').style.display = studio ? 'none' : 'block';
   $('headline').style.display = studio ? 'none' : 'block';
-  $('subs').style.display = studio ? 'none' : 'flex';
   $('lower').style.display = inIntro ? 'block' : 'none';
   $('outro').style.display = inOutro ? 'block' : 'none';
-  // «камера» в студии: плавный наезд и лёгкое покачивание (картинка 529×941 → 1080×1920)
-  const k = 1080 / 529, zoom = 1 + 0.035 * Math.sin(Math.min(1, t / 6) * Math.PI / 2) + (inOutro ? 0.02 * ease((t - T.outroStart) / 2) : 0);
-  const sx = Math.sin(t * 0.7) * 4, sy = Math.sin(t * 1.1) * 3;
-  const sc = k * zoom, ox = (1080 - 529 * sc) / 2 + sx, oy = (1920 - 941 * sc) * 0.35 + sy;
-  $('hostMain').style.transform = `translate(${ox}px, ${oy}px) scale(${sc})`;
-  $('studio').style.opacity = inIntro ? ease(t / .5) : 1;
-  for (const pre of ['', 'p-']) {
-    const lids = document.getElementById(pre + 'lids');
-    if (lids) lids.style.display = blinkAt(t) ? 'inline' : 'none';
+  const subsOn = !inIntro && !inOutro;
+  $('subs').style.display = subsOn ? 'flex' : 'none';
+  $('subs').className = studio ? 'center' : '';
+  $('ticker').style.display = inOutro ? 'none' : 'flex';
+
+  if (studio) {
+    const c = mixCam(CAMS[shot.cam0], CAMS[shot.cam1], ease(local));
+    $('hostMain').style.transform = camTransform(c, t);
+    $('studio').style.opacity = si === 0 ? ease(t / .45) : 1;
+    const sw = (t % 6.5) / 1.6; $('sweep').style.left = (sw < 1 ? -400 + sw * 1900 : -600) + 'px';
+  } else {
+    const p = shot.pan || 0, k = clamp(local);
+    const s = 1.05 + k * .12, dx = (p ? 1 : -1) * k * 40, dy = -k * 30;
+    $('photo').style.transform = `scale(${s}) translate(${dx}px, ${dy}px)`;
+    const h = ease((t - shot.start - .15) / .55);
+    $('headline').style.transform = `translateY(${(1 - h) * -40}px)`; $('headline').style.opacity = h;
+    const pp = ease((t - shot.start - .25) / .5); $('pip').style.transform = `scale(${.6 + .4 * pp})`; $('pip').style.opacity = pp;
   }
+  for (const pre of ['', 'p-']) {
+    const g = document.getElementById(pre + 'glow'); if (g) g.style.opacity = (.25 + .25 * (0.5 + 0.5 * Math.sin(t * 2.4))).toFixed(3);
+    const lids = document.getElementById(pre + 'lids'); if (lids) lids.style.display = blinkAt(t) ? 'inline' : 'none';
+  }
+  $('dot').style.opacity = (Math.floor(t * 1.6) % 2) ? .35 : 1;
   const m = mouthAt(t) || (t < .4 || t > T.end - .5 ? 'smile' : 'closed');
   setMouth('', m); setMouth('p-', m);
-  // фото новости: медленный наезд
-  const nt = clamp((t - T.introEnd) / Math.max(1, T.outroStart - T.introEnd));
-  $('photo').style.transform = `scale(${1.04 + nt * .12}) translate(${-nt * 20}px, ${-nt * 30}px)`;
-  // заголовок въезжает
-  const h = ease((t - T.introEnd - .2) / .6);
-  $('headline').style.transform = `translateY(${(1 - h) * -40}px)`; $('headline').style.opacity = h;
-  const lw = ease((t - .5) / .6); $('lower').style.transform = `translateX(${(1 - lw) * -1100}px)`;
+  let wipe = -1, flash = 0;
+  for (let i = 1; i < R.shots.length; i++) {
+    const b = R.shots[i].start, d = t - b;
+    if (R.shots[i].type !== R.shots[i - 1].type) { if (d > -.45 && d < .45) wipe = (d + .45) / .9; }
+    else if (d >= 0 && d < .12) flash = .32 * (1 - d / .12);
+  }
+  $('wipe').style.left = wipe < 0 ? '-3000px' : (-1700 + wipe * 3400) + 'px';
+  $('flash').style.opacity = flash;
+  const lw = ease((t - .6) / .6); $('lower').style.transform = `translateX(${(1 - lw) * -1100}px)`;
   const o = ease((t - T.outroStart - .3) / .6); $('outro').style.opacity = o;
-  // субтитры: фраза целиком, текущее слово — золотым
+  const tw = Math.max(1, tickW()), run = 1000 - (t * 150) % (tw + 1000);
+  $('tickText').style.left = run + 'px';
   const ph = R.phrases.find((x) => t >= x.start && t < x.end);
-  if (ph) {
-    $('subText').innerHTML = ph.words.map((wd) => `<span class="${t >= wd.end ? 'done' : t >= wd.start ? 'on' : 'todo'}">${wd.text}</span>`).join(' ');
-  } else $('subText').innerHTML = '';
+  $('subText').innerHTML = ph ? ph.words.map((wd) => `<span class="${t >= wd.end ? 'done' : t >= wd.start ? 'on' : 'todo'}">${wd.text}</span>`).join(' ') : '';
+  $('subs').style.visibility = ph ? 'visible' : 'hidden';
 }
 window.render = render;
 render(0);

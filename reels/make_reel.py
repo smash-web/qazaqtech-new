@@ -56,13 +56,15 @@ def upload(path: Path) -> str:
     return f"https://github.com/{REPO}/releases/download/{RELEASE}/{path.name}"
 
 
-def scene_times(job: dict) -> tuple[float, float, float]:
+def scene_times(job: dict) -> tuple[float, float, float, float | None]:
     al = job["alignment"]
     st, en = al["character_start_times_seconds"], al["character_end_times_seconds"]
     n = len(st)
     intro_end = st[min(job["intro_chars"], n - 1)]
     outro_start = st[min(job["outro_char"], n - 1)]
-    return intro_end, outro_start, en[-1] + 0.9
+    hc = job.get("headline_char")
+    headline = st[min(hc, n - 1)] if hc else None
+    return intro_end, outro_start, en[-1] + 0.9, headline
 
 
 def main() -> int:
@@ -83,11 +85,11 @@ def main() -> int:
         photo.write_bytes(resp.content)
         if resp.headers.get("content-type", "").endswith("webp"):
             photo = photo.rename(work / "photo.webp")
-        intro_end, outro_start, duration = scene_times(job)
+        intro_end, outro_start, duration, headline = scene_times(job)
         reel = render.build_reel(title=job["title"], category=job["category"], teaser=job["teaser"],
-                                 date_label=job["date_label"], photo=photo, gender=job["presenter"],
-                                 alignment=job["alignment"], duration=duration, intro_end=intro_end,
-                                 outro_start=outro_start)
+                                 date_label=job["date_label"], photo=photo, alignment=job["alignment"],
+                                 duration=duration, intro_end=intro_end, outro_start=outro_start,
+                                 headline_start=headline, ticker=job.get("ticker") or [])
         out = work / f"techtalq-{aid}-{job['slug'][:60]}.mp4"
         render.render_video(reel, audio, out)
         size = out.stat().st_size

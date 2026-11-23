@@ -127,15 +127,56 @@ def data_url(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
 
-def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo: Path, gender: str,
-               alignment: dict, duration: float, intro_end: float, outro_start: float) -> dict:
+def sentence_starts(chars: list[str], starts: list[float]) -> list[float]:
+    """Время начала каждого предложения (после . ! ? и пробела)."""
+    out = []
+    for i in range(1, len(chars)):
+        if chars[i - 1] in ".!?…" and chars[i].isspace():
+            j = i
+            while j < len(chars) and chars[j].isspace():
+                j += 1
+            if j < len(chars):
+                out.append(starts[j])
+    return out
+
+
+def plan_shots(intro_end: float, outro_start: float, end: float, headline_start: float | None,
+               sentences: list[float]) -> list[dict]:
+    """Монтаж: общий план → средний (анонс) → новость → крупный план в студии → новость → концовка."""
+    hs = headline_start if headline_start and 0.8 < headline_start < intro_end - 0.6 else None
+    shots = []
+    if hs:
+        shots += [{"type": "studio", "start": 0, "end": hs, "cam0": "wide", "cam1": "wide2"},
+                  {"type": "studio", "start": hs, "end": intro_end, "cam0": "medium", "cam1": "medium2"}]
+    else:
+        shots.append({"type": "studio", "start": 0, "end": intro_end, "cam0": "wide", "cam1": "medium"})
+    news_len = outro_start - intro_end
+    inner = [x for x in sentences if intro_end + 3 < x < outro_start - 3]
+    if news_len > 11 and inner:
+        mid = intro_end + news_len / 2
+        b = min(inner, key=lambda x: abs(x - mid))
+        nxt = [x for x in sentences if x > b + 1.5]
+        e = min(nxt[0] if nxt else b + 4, b + 4.5, outro_start - 2.5)
+        shots += [{"type": "news", "start": intro_end, "end": b, "pan": 0},
+                  {"type": "studio", "start": b, "end": e, "cam0": "close", "cam1": "close2"},
+                  {"type": "news", "start": e, "end": outro_start, "pan": 1}]
+    else:
+        shots.append({"type": "news", "start": intro_end, "end": outro_start, "pan": 0})
+    shots.append({"type": "studio", "start": outro_start, "end": end + 1, "cam0": "close2", "cam1": "medium"})
+    return [{**x, "start": round(x["start"], 3), "end": round(x["end"], 3)} for x in shots]
+
+
+def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo: Path, alignment: dict,
+               duration: float, intro_end: float, outro_start: float, headline_start: float | None = None,
+               ticker: list[str] | None = None, gender: str = "m") -> dict:
     chars, st, en = alignment["characters"], alignment["character_start_times_seconds"], alignment["character_end_times_seconds"]
-    # субтитры только для новостной части (в студии их заменяет плашка)
     news_words = [w for w in words(chars, st, en) if intro_end - 0.05 <= w.start < outro_start]
     return {
         "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
         "photo": data_url(photo), "hostImage": data_url(HERE / "assets" / "host.jpg"), "hostSvg": host_svg(),
-        "visemes": visemes(chars, st, en), "phrases": phrases(news_words), "blinks": blinks(duration),
+        "ticker": ticker or [], "visemes": visemes(chars, st, en), "phrases": phrases(news_words),
+        "blinks": blinks(duration),
+        "shots": plan_shots(intro_end, outro_start, duration, headline_start, sentence_starts(chars, st)),
         "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration},
     }
 

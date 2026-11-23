@@ -104,6 +104,7 @@ def test_prepare_returns_job_with_scene_boundaries(db):
     text = job["text"]
     assert text[job["intro_chars"]:].startswith("Apple компаниясы")
     assert text[job["outro_char"]:] == OUTRO
+    assert text[job["headline_char"]:].startswith("Apple Siri")
     assert job["photo_url"] == "https://techtalq.kz/api/media/file/p-hero.jpg"
     assert job["date_label"] == "23 ҚАРАША" and el.calls[0][1] == "JBFqnCBsd6RMkjVDRZzb"
     assert db.social_get(1, REEL)["status"] == "rendering"
