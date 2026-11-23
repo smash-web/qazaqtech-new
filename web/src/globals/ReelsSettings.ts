@@ -28,8 +28,9 @@ export const ReelsSettings: GlobalConfig = {
       type: 'row',
       fields: [
         {
-          name: 'presenter', label: 'Диктор', type: 'select', defaultValue: 'f',
-          options: [{ label: 'Ведущая', value: 'f' }, { label: 'Ведущий', value: 'm' }],
+          name: 'presenter', label: 'Голос диктора', type: 'select', defaultValue: 'm',
+          options: [{ label: 'Мужской', value: 'm' }, { label: 'Женский', value: 'f' }],
+          admin: { description: 'Диктор — картинка reels/assets/host.jpg; голос по умолчанию подбирается под него.' },
         },
         {
           name: 'voiceId', label: 'ID голоса ElevenLabs', type: 'text',

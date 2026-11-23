@@ -1,4 +1,4 @@
-"""Сборка рилса TechTalQ 1080×1920: HTML-шаблон + диктор SVG → кадры (Playwright/Chromium) → MP4 (ffmpeg).
+"""Сборка рилса TechTalQ 1080×1920: HTML-шаблон + картинка диктора с анимированным ртом → кадры (Playwright/Chromium) → MP4 (ffmpeg).
 
 Хронометраж задаёт озвучка: таймкоды символов ElevenLabs (alignment) превращаются в фазы рта
 (визе́мы) и субтитры по словам. Сцены: студия (приветствие и анонс) → новость на фоне, диктор в
@@ -37,12 +37,13 @@ class Word:
     end: float
 
 
-def presenter_svg(gender: str = "f") -> str:
+def host_svg() -> str:
+    """Накладка на картинку диктора: фазы рта и веки (reels/host.py)."""
     import importlib.util
-    spec = importlib.util.spec_from_file_location("presenter", HERE / "presenter.py")
+    spec = importlib.util.spec_from_file_location("host", HERE / "host.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
-    return mod.presenter(gender)
+    return mod.overlay_svg()
 
 
 def visemes(chars: list[str], starts: list[float], ends: list[float]) -> list[list]:
@@ -122,7 +123,7 @@ def blinks(duration: float, seed: int = 7) -> list[float]:
 
 
 def data_url(path: Path) -> str:
-    mime = {".png": "image/png", ".webp": "image/webp"}.get(path.suffix.lower(), "image/jpeg")
+    mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
 
@@ -133,7 +134,7 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
     news_words = [w for w in words(chars, st, en) if intro_end - 0.05 <= w.start < outro_start]
     return {
         "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
-        "photo": data_url(photo), "presenterSvg": presenter_svg(gender),
+        "photo": data_url(photo), "hostImage": data_url(HERE / "assets" / "host.jpg"), "hostSvg": host_svg(),
         "visemes": visemes(chars, st, en), "phrases": phrases(news_words), "blinks": blinks(duration),
         "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration},
     }
@@ -172,9 +173,9 @@ def render_video(reel: dict, audio: Path, out: Path, fps: int = FPS, music: Path
         cmd = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(tmp / "f%05d.jpg"), "-i", str(audio)]
         if music:
             cmd += ["-stream_loop", "-1", "-i", str(music), "-filter_complex",
-                    "[2:a]volume=0.12[m];[1:a]apad[v];[v][m]amix=inputs=2:duration=first:dropout_transition=2[a]", "-map", "0:v", "-map", "[a]"]
+                    "[2:a]volume=0.12[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[a]", "-map", "0:v", "-map", "[a]"]
         else:
-            cmd += ["-map", "0:v", "-map", "1:a", "-af", "apad"]
+            cmd += ["-map", "0:v", "-map", "1:a"]
         cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(fps),
                 "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-shortest", "-movflags", "+faststart", str(out)]
         subprocess.run(cmd, check=True)

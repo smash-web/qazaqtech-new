@@ -70,7 +70,7 @@ class FakeCMS:
 
 
 def settings(**kw):
-    s = {"enabled": True, "elevenlabsApiKey": "xi", "perDay": 3, "lookbackHours": 12, "presenter": "f",
+    s = {"enabled": True, "elevenlabsApiKey": "xi", "perDay": 3, "lookbackHours": 12, "presenter": "m",
          "model": "eleven_v3", "publishInstagram": True, "publishTelegram": True, "publishTikTok": False}
     s.update(kw)
     return s
@@ -105,7 +105,7 @@ def test_prepare_returns_job_with_scene_boundaries(db):
     assert text[job["intro_chars"]:].startswith("Apple компаниясы")
     assert text[job["outro_char"]:] == OUTRO
     assert job["photo_url"] == "https://techtalq.kz/api/media/file/p-hero.jpg"
-    assert job["date_label"] == "23 ҚАРАША" and el.calls[0][1] == "EXAVITQu4vr4xnSDxMaL"
+    assert job["date_label"] == "23 ҚАРАША" and el.calls[0][1] == "JBFqnCBsd6RMkjVDRZzb"
     assert db.social_get(1, REEL)["status"] == "rendering"
     # пока ролик собирается, ту же статью повторно не берём
     assert prepare_reel(Config(), db, cms, FakeLLM(), el, now=NOW + timedelta(minutes=5)) == {"skip": "no fresh articles"}

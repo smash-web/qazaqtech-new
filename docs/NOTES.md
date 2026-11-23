@@ -171,6 +171,8 @@
   → видео в релиз `reels` репозитория → `POST /api/run?step=reel_publish` (IG Reels, Telegram sendVideo, TikTok inbox).
 - Авторизация Actions → конвейер: OIDC-токен GitHub (audience `techtalq-reels`, только reels.yml на main),
   проверка в `qtnews/gh_oidc.py`. Для ручного запуска подходит и `Bearer CRON_SECRET`.
-- Диктор: `reels/presenter.py` (один SVG, группы `#m-*` — фазы рта, `#lids` — моргание, `#head` — покачивание).
+- Диктор: картинка `reels/assets/host.jpg` (вертикальная обрезка иллюстрации пользователя, рот стёрт, остаток старого логотипа закрашен)
+  + накладка `reels/host.py` (фазы рта `#m-*`, веки `#lids` в координатах картинки 529×941). Студия — картинка на весь кадр
+  с лёгким движением «камеры»; в новостной части — та же картинка в круге.
   Губы: буквы казахской кириллицы → формы рта по таймкодам ElevenLabs (render.visemes). Субтитры — только в новостной части.
 - Учёт: `social_posts` network = 'reel' (rendering → posted/failed, 2 попытки) и 'reel_instagram' / 'reel_telegram' / 'reel_tiktok'.

@@ -177,7 +177,7 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     db.social_save(aid, REEL, "rendering", attempt=True)
     try:
         script = write_script(llm, cfg.writer_model, article)
-        gender = "m" if s.get("presenter") == "m" else "f"
+        gender = "f" if s.get("presenter") == "f" else "m"
         voice = (s.get("voiceId") or "").strip() or DEFAULT_VOICES[gender]
         text = f"{script['intro']} {script['body']} {script['outro']}"
         eleven = eleven or ElevenLabsClient(key, cfg.user_agent)
