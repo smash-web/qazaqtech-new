@@ -171,9 +171,8 @@ def plan_shots(intro_end: float, outro_start: float, end: float, headline_start:
 
 def plan_cuts(shots: list[dict], clips: int, word_starts: list[float], step: float = 2.7) -> list[dict]:
     """Склейки внутри новостных отрезков: фото новости и видео по очереди, смена примерно каждые 2,7 с (по началу слова)."""
-    items = [("photo", None)] + [("clip", i) for i in range(clips)]
-    if clips:
-        items = [items[1], items[0]] + items[2:]  # видео сразу после студии — динамичнее
+    # есть хоть одно видео — монтируем только видео; фото новости — лишь когда видео не нашлось
+    items = [("clip", i) for i in range(clips)] or [("photo", None)]
     cuts, n, played = [], 0, {}
     for sh in shots:
         if sh["type"] != "news":

@@ -53,7 +53,7 @@ SCRIPT_PROMPT = """Мақала:
   "headline": "жаңалықтың мәнін айтатын бір сөйлем, 8–14 сөз",
   "body": "жаңалықтың толық мазмұны: 3–4 қысқа сөйлем, барлығы 45–70 сөз",
   "subjects": ["жаңалықтағы нақты нысандар ағылшынша: компания, өнім, қала, ғимарат (1–3 атау, адам аты емес)"],
-  "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші сұрау"]
+  "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші сұрау", "үшінші сұрау"]
 }}
 subjects — бейнемұрағаттан нақты кадр іздеуге (мысалы: "Nvidia", "Stuttgart", "iPhone 17").
 broll — көрнекі нақты зат немесе әрекет (мысалы: "graphics card closeup", "iphone in hand", "server room lights"), "technology" сияқты жалпы сөз емес."""
@@ -219,7 +219,7 @@ def write_script(llm: LLM, model: str, article: dict) -> dict:
     intro = f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары. {headline}"
     if not intro.endswith((".", "!", "?")):
         intro += "."
-    broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:2]
+    broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:3]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
     return {"teaser": teaser, "intro": intro, "body": body, "outro": OUTRO, "broll": broll, "subjects": subjects}
 
@@ -306,9 +306,9 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     # видео: сначала точные кадры по названиям с Commons, остальное — тематические с Pexels (всего до 3)
     clips = commons_clips(script.get("subjects") or [], cfg.user_agent) if script.get("subjects") else []
     pex = (s.get("pexelsApiKey") or "").strip()
-    if pex and len(clips) < 3:
-        clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=3 - len(clips))
-    job["broll"] = clips[:3]
+    if pex and len(clips) < 4:
+        clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=4 - len(clips))
+    job["broll"] = clips[:4]
     db.log_run("reel_prepare", {"article": aid, "chars": len(text), "broll": len(job.get("broll") or [])})
     return {"job": job}
 
