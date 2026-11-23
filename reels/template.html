@@ -20,6 +20,10 @@
   #photo { position: absolute; left: -80px; top: -80px; width: 1240px; height: 2080px; background-size: cover; background-position: center; }
   #news .shade { position: absolute; inset: 0;
     background: linear-gradient(180deg, rgba(11,27,58,.92) 0%, rgba(11,27,58,.55) 26%, rgba(11,27,58,.10) 44%, rgba(11,27,58,.30) 60%, rgba(11,27,58,.92) 80%, #0B1B3A 100%); }
+  #broll { overflow: hidden; background: #000; }
+  #brollImg { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; }
+  #broll .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,27,58,.85) 0%, rgba(11,27,58,.35) 24%, rgba(11,27,58,0) 40%, rgba(11,27,58,.25) 58%, rgba(11,27,58,.9) 82%, #0B1B3A 100%); }
+  #broll .credit { position: absolute; right: 64px; top: 1170px; font-size: 22px; font-weight: 700; letter-spacing: 1.5px; color: rgba(255,255,255,.85); background: rgba(11,27,58,.6); padding: 8px 14px; border-radius: 8px; }
   #pip { position: absolute; left: 56px; top: 1220px; width: 380px; height: 380px; border-radius: 50%; overflow: hidden;
     background: #0B1B3A; border: 10px solid #00AFCA; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
   #pip .hostbox { transform: translate(-270px, -452px) scale(.95); }
@@ -64,6 +68,7 @@
 </head>
 <body>
   <div id="news" class="layer"><div id="photo"></div><div class="shade"></div></div>
+  <div id="broll" class="layer"><img id="brollImg" alt=""><div class="shade"></div><div class="credit">ИЛЛЮСТРАЦИЯЛЫҚ КАДРЛАР</div></div>
   <div id="studio" class="layer"><div class="hostbox" id="hostMain"></div><div id="sweep"></div><div class="topshade"></div><div class="botshade"></div></div>
   <div id="pip"><div class="hostbox" id="hostPip"></div></div>
   <div id="pipTag">TECHTALQ</div>
@@ -125,7 +130,14 @@ function render(t) {
   const studio = shot.type === 'studio';
   const T = R.timeline, inIntro = t < T.introEnd, inOutro = t >= T.outroStart;
   $('studio').style.display = studio ? 'block' : 'none';
-  $('news').style.display = studio ? 'none' : 'block';
+  $('news').style.display = shot.type === 'news' ? 'block' : 'none';
+  $('broll').style.display = shot.type === 'broll' ? 'block' : 'none';
+  if (shot.type === 'broll') {
+    const clip = R.broll[shot.clip] || R.broll[0];
+    const i = Math.floor((t - shot.start + (shot.from || 0)) * 30) % clip.count;
+    const src = `${clip.dir}/${String(i + 1).padStart(5, '0')}.jpg`;
+    if ($('brollImg').getAttribute('src') !== src) $('brollImg').setAttribute('src', src);
+  }
   $('pip').style.display = $('pipTag').style.display = studio ? 'none' : 'block';
   $('headline').style.display = studio ? 'none' : 'block';
   $('lower').style.display = inIntro ? 'block' : 'none';
@@ -140,13 +152,16 @@ function render(t) {
     $('hostMain').style.transform = camTransform(c, t);
     $('studio').style.opacity = si === 0 ? ease(t / .45) : 1;
     const sw = (t % 6.5) / 1.6; $('sweep').style.left = (sw < 1 ? -400 + sw * 1900 : -600) + 'px';
-  } else {
+  } else if (shot.type === 'news') {
     const p = shot.pan || 0, k = clamp(local);
     const s = 1.05 + k * .12, dx = (p ? 1 : -1) * k * 40, dy = -k * 30;
     $('photo').style.transform = `scale(${s}) translate(${dx}px, ${dy}px)`;
-    const h = ease((t - shot.start - .15) / .55);
+  }
+  if (!studio) { // заголовок и круг с диктором появляются после студии, между фото и видео — остаются
+    const prev = R.shots[si - 1], from = prev && prev.type === 'studio' ? shot.start : -10;
+    const h = ease((t - from - .15) / .55);
     $('headline').style.transform = `translateY(${(1 - h) * -40}px)`; $('headline').style.opacity = h;
-    const pp = ease((t - shot.start - .25) / .5); $('pip').style.transform = `scale(${.6 + .4 * pp})`; $('pip').style.opacity = pp;
+    const pp = ease((t - from - .25) / .5); $('pip').style.transform = `scale(${.6 + .4 * pp})`; $('pip').style.opacity = pp;
   }
   for (const pre of ['', 'p-']) {
     const g = document.getElementById(pre + 'glow'); if (g) g.style.opacity = (.25 + .25 * (0.5 + 0.5 * Math.sin(t * 2.4))).toFixed(3);
@@ -158,8 +173,9 @@ function render(t) {
   let wipe = -1, flash = 0;
   for (let i = 1; i < R.shots.length; i++) {
     const b = R.shots[i].start, d = t - b;
-    if (R.shots[i].type !== R.shots[i - 1].type) { if (d > -.45 && d < .45) wipe = (d + .45) / .9; }
-    else if (d >= 0 && d < .12) flash = .32 * (1 - d / .12);
+    const a = R.shots[i - 1].type, b2 = R.shots[i].type;
+    if ((a === 'studio') !== (b2 === 'studio')) { if (d > -.45 && d < .45) wipe = (d + .45) / .9; }
+    else if (d >= 0 && d < .12) flash = (a === 'studio' ? .32 : .22) * (1 - d / .12);
   }
   $('wipe').style.left = wipe < 0 ? '-3000px' : (-1700 + wipe * 3400) + 'px';
   $('flash').style.opacity = flash;
@@ -172,6 +188,9 @@ function render(t) {
   $('subs').style.visibility = ph ? 'visible' : 'hidden';
 }
 window.render = render;
+window.ready = () => new Promise((res) => { const im = $('brollImg');
+  if ($('broll').style.display === 'none' || !im.getAttribute('src') || im.complete) return res();
+  im.onload = im.onerror = () => res(); });
 render(0);
 </script>
 </body>

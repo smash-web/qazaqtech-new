@@ -51,8 +51,10 @@ SCRIPT_PROMPT = """Мақала:
 {{
   "teaser": "экрандағы қысқа тақырып, 38 таңбадан аспасын",
   "headline": "жаңалықтың мәнін айтатын бір сөйлем, 8–14 сөз",
-  "body": "жаңалықтың толық мазмұны: 3–4 қысқа сөйлем, барлығы 45–70 сөз"
-}}"""
+  "body": "жаңалықтың толық мазмұны: 3–4 қысқа сөйлем, барлығы 45–70 сөз",
+  "broll": ["жаңалық тақырыбына сай стоктық бейне іздеуге 2–3 сөзден тұратын ағылшынша сұрау", "екінші сұрау"]
+}}
+broll сұраулары нақты оқиғаны емес, тақырыпты суреттейтін жалпы кадрларды іздесін (мысалы: "data center servers", "computer chip closeup", "people using smartphones"). Брендтер мен адамдардың аты-жөнін жазба."""
 
 
 class ElevenLabsError(RuntimeError):
@@ -82,6 +84,38 @@ class ElevenLabsClient:
         if not data.get("audio_base64") or not data.get("alignment"):
             raise ElevenLabsError("ElevenLabs вернул ответ без звука или таймкодов")
         return data
+
+
+PEXELS = "https://api.pexels.com/videos/search"
+
+
+def pexels_clips(api_key: str, queries: list[str], user_agent: str, want: int = 2, timeout: int = 30) -> list[dict]:
+    """Вертикальные стоковые видео Pexels по запросам (бесплатная лицензия, без обязательного указания автора)."""
+    clips: list[dict] = []
+    seen: set[int] = set()
+    for q in queries + ["technology abstract", "computer code screen"]:
+        if len(clips) >= want:
+            break
+        try:
+            r = requests.get(PEXELS, timeout=timeout, headers={"Authorization": api_key, "User-Agent": user_agent},
+                             params={"query": q, "orientation": "portrait", "size": "medium", "per_page": 12})
+            r.raise_for_status()
+        except requests.RequestException as exc:
+            log.warning("Pexels «%s»: %s", q, exc)
+            continue
+        for v in r.json().get("videos") or []:
+            if v.get("id") in seen or (v.get("duration") or 0) < 5:
+                continue
+            files = [f for f in v.get("video_files") or [] if f.get("file_type") == "video/mp4"
+                     and (f.get("height") or 0) > (f.get("width") or 0) and 1000 <= (f.get("height") or 0) <= 2600]
+            if not files:
+                continue
+            f = min(files, key=lambda f: abs((f.get("height") or 0) - 1920))
+            seen.add(v["id"])
+            clips.append({"url": f["link"], "query": q, "duration": v.get("duration"),
+                          "credit": ((v.get("user") or {}).get("name") or "Pexels"), "page": v.get("url")})
+            break
+    return clips
 
 
 def lexical_text(node: Any, limit: int = 3000) -> str:
@@ -122,7 +156,8 @@ def write_script(llm: LLM, model: str, article: dict) -> dict:
     intro = f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары. {headline}"
     if not intro.endswith((".", "!", "?")):
         intro += "."
-    return {"teaser": teaser, "intro": intro, "body": body, "outro": OUTRO}
+    broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:2]
+    return {"teaser": teaser, "intro": intro, "body": body, "outro": OUTRO, "broll": broll}
 
 
 def _ok_to_render(rec: dict | None, now: datetime) -> bool:
@@ -203,7 +238,10 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
                    if a.get("id") != aid and a.get("title")][-6:][::-1],
         "text": text, "audio_base64": tts["audio_base64"], "alignment": tts["alignment"],
     }
-    db.log_run("reel_prepare", {"article": aid, "chars": len(text)})
+    pex = (s.get("pexelsApiKey") or "").strip()
+    if pex and script.get("broll"):
+        job["broll"] = pexels_clips(pex, script["broll"], cfg.user_agent)
+    db.log_run("reel_prepare", {"article": aid, "chars": len(text), "broll": len(job.get("broll") or [])})
     return {"job": job}
 
 

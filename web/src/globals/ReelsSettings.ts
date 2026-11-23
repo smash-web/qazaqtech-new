@@ -47,6 +47,13 @@ export const ReelsSettings: GlobalConfig = {
       admin: { placeholder: 'sk_…', description: 'elevenlabs.io → Developers → API Keys. Никому не пересылайте.' },
     },
     {
+      name: 'pexelsApiKey', label: 'API-ключ Pexels (видео-репортаж)', type: 'text',
+      admin: {
+        description: 'Бесплатно: pexels.com/api → «Your API Key». С ключом в середине новости идут тематические стоковые видео ' +
+          'с подписью «Иллюстрациялық кадрлар». Пусто — только фото новости.',
+      },
+    },
+    {
       type: 'row',
       fields: [
         { name: 'publishInstagram', label: 'Публиковать в Instagram Reels', type: 'checkbox', defaultValue: true },

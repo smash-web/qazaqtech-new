@@ -160,3 +160,23 @@ def test_publish_records_render_error(db):
     cms = FakeCMS(settings(), [art(1)])
     publish_reel(Config(), db, cms, {"article_id": 1, "error": "ffmpeg упал"}, now=NOW)
     assert db.social_get(1, REEL)["status"] == "failed" and "ffmpeg" in cms.settings["lastError"]
+
+
+def test_pexels_picks_vertical_hd(monkeypatch):
+    from qtnews import reels
+
+    class Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"videos": [
+                {"id": 1, "duration": 3, "video_files": [{"file_type": "video/mp4", "width": 1080, "height": 1920, "link": "short"}]},
+                {"id": 2, "duration": 12, "url": "https://pexels.com/v/2", "user": {"name": "Ann"}, "video_files": [
+                    {"file_type": "video/mp4", "width": 1920, "height": 1080, "link": "landscape"},
+                    {"file_type": "video/mp4", "width": 720, "height": 1280, "link": "sd"},
+                    {"file_type": "video/mp4", "width": 1080, "height": 1920, "link": "hd"}]}]}
+
+    monkeypatch.setattr(reels.requests, "get", lambda *a, **k: Resp())
+    clips = reels.pexels_clips("key", ["data center"], "ua", want=1)
+    assert clips == [{"url": "hd", "query": "data center", "duration": 12, "credit": "Ann", "page": "https://pexels.com/v/2"}]
