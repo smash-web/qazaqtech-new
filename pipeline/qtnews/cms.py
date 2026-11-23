@@ -151,3 +151,9 @@ class CMSClient:
 
     def update_tiktok_settings(self, data: dict) -> None:
         self._req("POST", "/globals/tiktok-settings", json=data)
+
+    def telegram_settings(self) -> dict:
+        return self._req("GET", "/globals/telegram-settings", params={"depth": 0})
+
+    def update_telegram_settings(self, data: dict) -> None:
+        self._req("POST", "/globals/telegram-settings", json=data)
