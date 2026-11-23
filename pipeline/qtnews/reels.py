@@ -111,7 +111,7 @@ def pexels_clips(api_key: str, queries: list[str], user_agent: str, want: int = 
     """Вертикальные стоковые видео Pexels по запросам (бесплатная лицензия, без обязательного указания автора)."""
     clips: list[dict] = []
     seen: set[int] = set()
-    for q in queries + ["technology abstract", "computer code screen"]:
+    for q in queries + ["person using smartphone", "hands typing laptop"]:
         if len(clips) >= want:
             break
         try:
@@ -387,14 +387,19 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         "text": text, "audio_base64": tts["audio_base64"], "alignment": tts["alignment"],
         "queries": {"subjects": script.get("subjects"), "broll": script.get("broll")},
     }
-    # видео: сначала точные кадры по названиям с Commons, остальное — тематические с Pexels (всего до 3)
-    clips = commons_clips(script.get("subjects") or [], cfg.user_agent) if script.get("subjects") else []
+    # видео: как в новостных рилсах — вертикальные стоковые кадры по одному на предложение. Pexels (больше всего
+    # вертикальных) → Pixabay → Commons (точные названия, но обычно горизонтально)
+    queries = script.get("broll") or []
+    clips: list[dict] = []
+    pex = (s.get("pexelsApiKey") or "").strip()
+    if pex:
+        clips += pexels_clips(pex, queries, cfg.user_agent, want=6)
     pix = (s.get("pixabayApiKey") or "").strip()
     if pix and len(clips) < 6:
-        clips += pixabay_clips(pix, script.get("broll") or [], cfg.user_agent, want=6 - len(clips))
-    pex = (s.get("pexelsApiKey") or "").strip()
-    if pex and len(clips) < 6:
-        clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=6 - len(clips))
+        clips += pixabay_clips(pix, [q for q in queries if q not in {c["query"] for c in clips}], cfg.user_agent,
+                               want=6 - len(clips))
+    if len(clips) < 6 and script.get("subjects"):
+        clips += commons_clips(script["subjects"], cfg.user_agent, want=min(2, 6 - len(clips)))
     job["broll"] = clips[:6]
     db.log_run("reel_prepare", {"article": aid, "chars": len(text), "broll": len(job.get("broll") or [])})
     return {"job": job}
