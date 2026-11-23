@@ -52,9 +52,11 @@ SCRIPT_PROMPT = """Мақала:
   "teaser": "экрандағы қысқа тақырып, 38 таңбадан аспасын",
   "headline": "жаңалықтың мәнін айтатын бір сөйлем, 8–14 сөз",
   "body": "жаңалықтың толық мазмұны: 3–4 қысқа сөйлем, барлығы 45–70 сөз",
-  "broll": ["жаңалық тақырыбына сай стоктық бейне іздеуге 2–3 сөзден тұратын ағылшынша сұрау", "екінші сұрау"]
+  "subjects": ["жаңалықтағы нақты нысандар ағылшынша: компания, өнім, қала, ғимарат (1–3 атау, адам аты емес)"],
+  "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші сұрау"]
 }}
-broll сұраулары нақты оқиғаны емес, тақырыпты суреттейтін жалпы кадрларды іздесін (мысалы: "data center servers", "computer chip closeup", "people using smartphones"). Брендтер мен адамдардың аты-жөнін жазба."""
+subjects — бейнемұрағаттан нақты кадр іздеуге (мысалы: "Nvidia", "Stuttgart", "iPhone 17").
+broll — көрнекі нақты зат немесе әрекет (мысалы: "graphics card closeup", "iphone in hand", "server room lights"), "technology" сияқты жалпы сөз емес."""
 
 
 class ElevenLabsError(RuntimeError):
@@ -113,7 +115,68 @@ def pexels_clips(api_key: str, queries: list[str], user_agent: str, want: int = 
             f = min(files, key=lambda f: abs((f.get("height") or 0) - 1920))
             seen.add(v["id"])
             clips.append({"url": f["link"], "query": q, "duration": v.get("duration"),
-                          "credit": ((v.get("user") or {}).get("name") or "Pexels"), "page": v.get("url")})
+                          "credit": f"{(v.get('user') or {}).get('name') or 'автор'} / Pexels", "page": v.get("url")})
+            break
+    return clips
+
+
+COMMONS_API = "https://commons.wikimedia.org/w/api.php"
+
+
+def _transcoded(url: str, height: int) -> str:
+    """Оригинал на Commons → готовая копия WebM нужной высоты (Commons хранит их рядом)."""
+    m = re.match(r"(https://upload\.wikimedia\.org/wikipedia/commons)/(\w/\w\w)/(.+)$", url)
+    if not m:
+        return url
+    return f"{m.group(1)}/transcoded/{m.group(2)}/{m.group(3)}/{m.group(3)}.{height}p.vp9.webm"
+
+
+def commons_clips(subjects: list[str], user_agent: str, want: int = 2, timeout: int = 25) -> list[dict]:
+    """Видео со свободной лицензией с Wikimedia Commons по точным названиям из новости (с указанием автора)."""
+    from .images import _strip, license_ok
+    sess = requests.Session()
+    sess.headers["User-Agent"] = user_agent
+    clips: list[dict] = []
+    seen: set[str] = set()
+    for q in subjects:
+        if len(clips) >= want:
+            break
+        try:
+            r = sess.get(COMMONS_API, timeout=timeout, params={
+                "action": "query", "format": "json", "formatversion": "2", "generator": "search",
+                "gsrsearch": f"{q} filetype:video", "gsrnamespace": "6", "gsrlimit": "10",
+                "prop": "imageinfo", "iiprop": "url|size|mime|extmetadata",
+                "iiextmetadatafilter": "LicenseShortName|UsageTerms|Artist|Credit|Restrictions"})
+            r.raise_for_status()
+            pages = sorted(r.json().get("query", {}).get("pages", []), key=lambda p: p.get("index", 0))
+        except (requests.RequestException, ValueError) as exc:
+            log.warning("Commons видео «%s»: %s", q, exc)
+            continue
+        for p in pages:
+            info = (p.get("imageinfo") or [{}])[0]
+            meta = info.get("extmetadata", {})
+            val = lambda k: (meta.get(k) or {}).get("value", "")  # noqa: E731
+            short = _strip(val("LicenseShortName"))
+            dur = float(info.get("duration") or 0)
+            if (not license_ok(short, _strip(val("UsageTerms"))) or "personality" in _strip(val("Restrictions")).lower()
+                    or not str(info.get("mime", "")).startswith(("video/", "application/ogg"))
+                    or (dur and dur < 4) or info.get("url") in seen):
+                continue
+            url = None
+            for h in (720, 480):
+                cand = _transcoded(info.get("url", ""), h)
+                try:
+                    if sess.head(cand, timeout=timeout, allow_redirects=True).status_code == 200:
+                        url = cand
+                        break
+                except requests.RequestException:
+                    pass
+            if not url:
+                continue
+            seen.add(info["url"])
+            author = (_strip(val("Artist")) or _strip(val("Credit")) or "белгісіз автор")[:60]
+            clips.append({"url": url, "query": q, "duration": dur or None, "page": info.get("descriptionurl"),
+                          "credit": f"{author} / Wikimedia Commons, {short}"})
             break
     return clips
 
@@ -157,7 +220,8 @@ def write_script(llm: LLM, model: str, article: dict) -> dict:
     if not intro.endswith((".", "!", "?")):
         intro += "."
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:2]
-    return {"teaser": teaser, "intro": intro, "body": body, "outro": OUTRO, "broll": broll}
+    subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
+    return {"teaser": teaser, "intro": intro, "body": body, "outro": OUTRO, "broll": broll, "subjects": subjects}
 
 
 def _ok_to_render(rec: dict | None, now: datetime) -> bool:
@@ -230,6 +294,7 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         "category": (cat.get("name") if isinstance(cat, dict) else None) or "Технология",
         "teaser": script["teaser"], "date_label": f"{local.day} {KZ_MONTHS[local.month - 1]}",
         "photo_url": _media_url(article.get("coverImage"), cfg.site_url), "presenter": gender,
+        "photo_credit": re.sub(r"^(Сурет|Фото|Photo)\s*:\s*", "", str((article.get("coverImage") or {}).get("credit") or "").split(" — ")[0]).strip()[:80],
         # где в тексте начинаются новость и концовка — по ним сцены переключаются
         "intro_chars": len(script["intro"]) + 1, "outro_char": len(script["intro"]) + 1 + len(script["body"]) + 1,
         "headline_char": len(f"Сәлеметсіз бе! {SPOKEN_BRAND} жаңалықтары. "),
@@ -238,9 +303,12 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
                    if a.get("id") != aid and a.get("title")][-6:][::-1],
         "text": text, "audio_base64": tts["audio_base64"], "alignment": tts["alignment"],
     }
+    # видео: сначала точные кадры по названиям с Commons, остальное — тематические с Pexels (всего до 3)
+    clips = commons_clips(script.get("subjects") or [], cfg.user_agent) if script.get("subjects") else []
     pex = (s.get("pexelsApiKey") or "").strip()
-    if pex and script.get("broll"):
-        job["broll"] = pexels_clips(pex, script["broll"], cfg.user_agent)
+    if pex and len(clips) < 3:
+        clips += pexels_clips(pex, script.get("broll") or [], cfg.user_agent, want=3 - len(clips))
+    job["broll"] = clips[:3]
     db.log_run("reel_prepare", {"article": aid, "chars": len(text), "broll": len(job.get("broll") or [])})
     return {"job": job}
 

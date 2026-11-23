@@ -13,72 +13,64 @@
   .hostbox img { position: absolute; left: 0; top: 0; width: 941px; height: 1672px; }
   #sweep { position: absolute; top: -200px; bottom: -200px; width: 260px; left: -400px; transform: skewX(-18deg);
     background: linear-gradient(90deg, rgba(255,255,255,0), rgba(160,220,255,.16), rgba(255,255,255,0)); mix-blend-mode: screen; }
-  #studio .topshade { position: absolute; left: 0; right: 0; top: 0; height: 380px; background: linear-gradient(rgba(11,27,58,.8), rgba(11,27,58,0)); }
-  #studio .botshade { position: absolute; left: 0; right: 0; bottom: 0; height: 760px; background: linear-gradient(rgba(11,27,58,0), rgba(11,27,58,.5) 50%, rgba(11,27,58,.85)); }
-  /* Новость */
-  #news { overflow: hidden; }
-  #photo { position: absolute; left: -80px; top: -80px; width: 1240px; height: 2080px; background-size: cover; background-position: center; }
-  #news .shade { position: absolute; inset: 0;
-    background: linear-gradient(180deg, rgba(11,27,58,.92) 0%, rgba(11,27,58,.55) 26%, rgba(11,27,58,.10) 44%, rgba(11,27,58,.30) 60%, rgba(11,27,58,.92) 80%, #0B1B3A 100%); }
-  #broll { overflow: hidden; background: #000; }
-  #brollImg { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; }
-  #broll .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,27,58,.85) 0%, rgba(11,27,58,.35) 24%, rgba(11,27,58,0) 40%, rgba(11,27,58,.25) 58%, rgba(11,27,58,.9) 82%, #0B1B3A 100%); }
-  #broll .credit { position: absolute; right: 64px; top: 1170px; font-size: 22px; font-weight: 700; letter-spacing: 1.5px; color: rgba(255,255,255,.85); background: rgba(11,27,58,.6); padding: 8px 14px; border-radius: 8px; }
-  #pip { position: absolute; left: 56px; top: 1220px; width: 380px; height: 380px; border-radius: 50%; overflow: hidden;
-    background: #0B1B3A; border: 10px solid #00AFCA; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
-  #pip .hostbox { transform: translate(-270px, -452px) scale(.95); }
-  #pipTag { position: absolute; left: 80px; top: 1580px; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 26px;
-    letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; }
-  /* Общие элементы */
-  #top { position: absolute; left: 64px; right: 64px; top: 200px; display: flex; align-items: center; justify-content: space-between; }
-  .logo { display: flex; align-items: center; gap: 16px; font-size: 44px; font-weight: 800; letter-spacing: -.5px; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .vign { position: absolute; inset: 0; background: radial-gradient(120% 80% at 50% 45%, rgba(0,0,0,0) 55%, rgba(5,12,30,.55) 100%); }
+  .bshade { position: absolute; left: 0; right: 0; bottom: 0; height: 520px; background: linear-gradient(rgba(5,12,30,0), rgba(5,12,30,.75)); }
+  .tshade { position: absolute; left: 0; right: 0; top: 0; height: 300px; background: linear-gradient(rgba(5,12,30,.6), rgba(5,12,30,0)); }
+  /* Кадры новости: фото и видео на весь экран */
+  #media { overflow: hidden; background: #000; }
+  #photo, #clip { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform-origin: 50% 45%; }
+  #photo { background-size: cover; background-position: center; }
+  #clip { object-fit: cover; }
+  #credit { position: absolute; right: 40px; top: 1545px; max-width: 620px; text-align: right; font-size: 20px; font-weight: 600;
+    color: rgba(255,255,255,.8); text-shadow: 0 1px 6px rgba(0,0,0,.8); line-height: 1.3; }
+  #credit b { display: inline-block; font-weight: 800; letter-spacing: 1.2px; color: #fff; background: rgba(0,175,202,.9); padding: 3px 8px; border-radius: 5px; margin-bottom: 4px; }
+  /* Диктор в круге */
+  #pip { position: absolute; left: 48px; top: 1250px; width: 330px; height: 330px; border-radius: 50%; overflow: hidden;
+    background: #0B1B3A; border: 8px solid #00AFCA; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
+  #pip .hostbox { transform: translate(-215px, -390px) scale(.84); }
+  /* Шапка */
+  #top { position: absolute; left: 56px; right: 56px; top: 190px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 12px; font-size: 38px; font-weight: 800; letter-spacing: -.5px; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
   .logo b { color: #00AFCA; }
-  .live { display: flex; align-items: center; gap: 12px; background: rgba(11,27,58,.55); border: 2px solid rgba(255,255,255,.22);
-    padding: 10px 20px; border-radius: 999px; font-size: 26px; font-weight: 700; letter-spacing: 1.5px; }
-  .live i { width: 14px; height: 14px; border-radius: 50%; background: #FF4D4D; display: block; }
-  #headline { position: absolute; left: 64px; right: 64px; top: 330px; }
-  .chip { display: inline-block; background: #00AFCA; color: #0B1B3A; font-weight: 800; font-size: 28px; letter-spacing: 2.5px;
-    padding: 10px 18px; border-radius: 10px; }
-  #headline h1 { margin: 22px 0 0; font-size: 62px; line-height: 1.1; letter-spacing: -1.2px; font-weight: 800; text-shadow: 0 4px 18px rgba(0,0,0,.5); }
-  #headline h1 em { font-style: normal; color: #00AFCA; }
-  #lower { position: absolute; left: 60px; right: 60px; top: 1250px; }
-  #lower .bar { display: inline-block; background: #FFC72C; color: #0B1B3A; font-weight: 800; font-size: 30px; letter-spacing: 2px; padding: 12px 22px; border-radius: 12px 12px 0 0; }
-  #lower .title { background: rgba(11,27,58,.92); border-left: 10px solid #00AFCA; padding: 24px 28px; font-size: 48px; font-weight: 800; line-height: 1.15; border-radius: 0 14px 14px 14px; }
-  #subs { position: absolute; left: 470px; right: 64px; top: 1240px; min-height: 300px; display: flex; align-items: center; }
-  #subs.center { left: 70px; right: 70px; top: 1210px; min-height: 0; justify-content: center; text-align: center; }
-  #subs.center p { background: rgba(11,27,58,.78); padding: 18px 26px; border-radius: 18px; }
-  #subs p { margin: 0; font-size: 50px; font-weight: 800; line-height: 1.22; text-shadow: 0 4px 18px rgba(0,0,0,.6); }
-  #subs span.on { color: #FFC72C; }
-  #subs span.done { color: #fff; }
-  #subs span.todo { color: rgba(255,255,255,.55); }
-  /* бегущая строка */
-  #ticker { position: absolute; left: 0; right: 0; top: 1640px; height: 76px; display: flex; background: rgba(11,27,58,.94); border-top: 4px solid #00AFCA; overflow: hidden; }
-  #ticker .lbl { flex: 0 0 auto; background: #00AFCA; color: #0B1B3A; font-weight: 800; font-size: 28px; letter-spacing: 2px; padding: 0 22px; display: flex; align-items: center; z-index: 1; }
+  .live { display: flex; align-items: center; gap: 10px; background: rgba(5,12,30,.55); padding: 9px 18px; border-radius: 999px; font-size: 24px; font-weight: 800; letter-spacing: 1.5px; }
+  .live i { width: 12px; height: 12px; border-radius: 50%; background: #FF3B3B; display: block; box-shadow: 0 0 12px #FF3B3B; }
+  /* Субтитры как в рилсах: 2–3 слова, слово «выпрыгивает», текущее — жёлтым */
+  #caps { position: absolute; left: 50px; right: 50px; top: 960px; height: 260px; display: flex; align-items: center; justify-content: center; text-align: center; }
+  #caps p { margin: 0; font-size: 92px; line-height: 1.02; font-weight: 900; letter-spacing: -1.5px; text-transform: uppercase;
+    -webkit-text-stroke: 14px #0B1B3A; paint-order: stroke fill; filter: drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+  #caps span { display: inline-block; margin: 0 .12em; transform-origin: 50% 70%; }
+  #caps span.on { color: #FFC72C; }
+  #caps span.todo { opacity: 0; }
+  /* Хук в начале: тема новости */
+  #hook { position: absolute; left: 56px; right: 56px; top: 1250px; }
+  #hook .tag { display: inline-block; background: #FFC72C; color: #0B1B3A; font-weight: 900; font-size: 30px; letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; transform: rotate(-2deg); }
+  #hook .t { margin-top: 18px; font-size: 64px; font-weight: 900; line-height: 1.05; letter-spacing: -1.2px; text-transform: uppercase;
+    -webkit-text-stroke: 10px #0B1B3A; paint-order: stroke fill; }
+  /* Бегущая строка */
+  #ticker { position: absolute; left: 0; right: 0; top: 1640px; height: 70px; display: flex; background: rgba(5,12,30,.92); overflow: hidden; }
+  #ticker .lbl { flex: 0 0 auto; background: #00AFCA; color: #0B1B3A; font-weight: 900; font-size: 26px; letter-spacing: 2px; padding: 0 20px; display: flex; align-items: center; z-index: 1; }
   #ticker .run { position: relative; flex: 1; overflow: hidden; }
-  #ticker .run div { position: absolute; top: 0; height: 72px; display: flex; align-items: center; white-space: nowrap; font-size: 30px; font-weight: 600; color: #DCE7F5; }
-  #ticker .run b { color: #FFC72C; margin: 0 22px; }
+  #ticker .run div { position: absolute; top: 0; height: 70px; display: flex; align-items: center; white-space: nowrap; font-size: 28px; font-weight: 600; color: #DCE7F5; }
+  #ticker .run b { color: #FFC72C; margin: 0 20px; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
   #wipe { position: absolute; top: 0; bottom: 0; width: 1400px; left: -3000px; background: #00AFCA; transform: skewX(-12deg); }
   #wipe::after { content: ''; position: absolute; top: 0; bottom: 0; right: -90px; width: 90px; background: #FFC72C; }
-  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
-  #outro .cta { position: absolute; left: 70px; right: 70px; top: 1250px; height: 250px; border-radius: 24px; background: rgba(11,27,58,.9); border-top: 6px solid #FFC72C;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
-  #outro .cta .site { background: #FFC72C; color: #0B1B3A; font-size: 54px; font-weight: 800; padding: 16px 28px; border-radius: 16px; }
-  #outro .cta .follow { font-size: 40px; font-weight: 700; color: #C9D6E8; }
+  #outro { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 300px; }
+  #outro .cta { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  #outro .site { background: #FFC72C; color: #0B1B3A; font-size: 64px; font-weight: 900; padding: 14px 30px; border-radius: 18px; transform: rotate(-2deg); }
+  #outro .follow { font-size: 40px; font-weight: 800; text-shadow: 0 3px 12px rgba(0,0,0,.6); }
 </style>
 </head>
 <body>
-  <div id="news" class="layer"><div id="photo"></div><div class="shade"></div></div>
-  <div id="broll" class="layer"><img id="brollImg" alt=""><div class="shade"></div><div class="credit">ИЛЛЮСТРАЦИЯЛЫҚ КАДРЛАР</div></div>
-  <div id="studio" class="layer"><div class="hostbox" id="hostMain"></div><div id="sweep"></div><div class="topshade"></div><div class="botshade"></div></div>
+  <div id="media" class="layer"><div id="photo"></div><img id="clip" alt=""><div class="vign"></div><div class="tshade"></div><div class="bshade"></div><div id="credit"></div></div>
+  <div id="studio" class="layer"><div class="hostbox" id="hostMain"></div><div id="sweep"></div><div class="vign"></div><div class="tshade"></div><div class="bshade"></div></div>
   <div id="pip"><div class="hostbox" id="hostPip"></div></div>
-  <div id="pipTag">TECHTALQ</div>
   <div id="top">
-    <div class="logo"><svg width="54" height="54" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg><span>TechTal<b>Q</b></span></div>
+    <div class="logo"><svg width="46" height="46" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg><span>TechTal<b>Q</b></span></div>
     <div class="live"><i id="dot"></i><span id="dateLabel"></span></div>
   </div>
-  <div id="headline"><span class="chip" id="cat"></span><h1 id="title"></h1></div>
-  <div id="lower"><span class="bar">IT ЖАҢАЛЫҚТАРЫ</span><div class="title" id="teaser"></div></div>
-  <div id="subs"><p id="subText"></p></div>
+  <div id="hook"><span class="tag" id="cat"></span><div class="t" id="teaser"></div></div>
+  <div id="caps"><p id="capText"></p></div>
   <div id="ticker"><span class="lbl">ЖАҢАЛЫҚТАР</span><div class="run"><div id="tickText"></div></div></div>
   <div id="outro" class="layer"><div class="cta"><span class="site">techtalq.kz</span><span class="follow">Жазылыңыз — @techtalq.kz</span></div></div>
   <div id="flash"></div>
@@ -93,31 +85,26 @@ $('photo').style.backgroundImage = `url(${R.photo})`;
 $('cat').textContent = R.category;
 $('dateLabel').textContent = R.dateLabel;
 $('teaser').textContent = R.teaser;
-{ const w = R.title.split(' '); const tail = w.splice(Math.max(2, w.length - 3)); $('title').innerHTML = w.join(' ') + ' <em>' + tail.join(' ') + '</em>'; }
 $('tickText').innerHTML = (R.ticker && R.ticker.length ? R.ticker : [R.title]).map((x) => `<b>●</b>${x}`).join('') + '<b>●</b>';
-const tickW = () => $('tickText').scrollWidth;
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ease = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const back = (x) => { x = clamp(x); const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 const lerp = (a, b, x) => a + (b - a) * x;
 const MOUTHS = ['closed', 'small', 'mid', 'wide', 'o', 'smile'];
 function setMouth(prefix, m) { for (const k of MOUTHS) { const el = document.getElementById(prefix + 'm-' + k); if (el) el.style.display = k === m ? 'inline' : 'none'; } }
 function mouthAt(t) { for (const v of R.visemes) { if (t >= v[0] && t < v[1]) return v[2]; } return null; }
 function blinkAt(t) { for (const b of R.blinks) { if (t >= b && t < b + 0.12) return true; } return false; }
-
-/* Планы камеры: zoom — во сколько раз крупнее общего плана, (fx, fy) — точка картинки, (px, py) — где она в кадре */
 const CAMS = {
   wide:   { zoom: 1.00, fx: 470, fy: 836, px: 540, py: 960 },
   wide2:  { zoom: 1.12, fx: 470, fy: 800, px: 540, py: 930 },
   medium: { zoom: 1.55, fx: 472, fy: 760, px: 540, py: 860 },
   medium2:{ zoom: 1.70, fx: 472, fy: 745, px: 540, py: 840 },
-  close:  { zoom: 2.30, fx: 473, fy: 670, px: 540, py: 800 },
-  close2: { zoom: 2.55, fx: 473, fy: 665, px: 540, py: 790 },
-  side:   { zoom: 1.85, fx: 520, fy: 700, px: 420, py: 820 },
+  close:  { zoom: 2.30, fx: 473, fy: 670, px: 540, py: 760 },
+  close2: { zoom: 2.55, fx: 473, fy: 665, px: 540, py: 740 },
 };
 function camTransform(c, t) {
-  const base = 1080 / 941, sc = base * c.zoom;
-  const sway = Math.sin(t * .7) * 3, bob = Math.sin(t * 1.1) * 2.5;
+  const sc = 1080 / 941 * c.zoom, sway = Math.sin(t * .7) * 3, bob = Math.sin(t * 1.1) * 2.5;
   let ox = c.px - c.fx * sc + sway, oy = c.py - c.fy * sc + bob;
   ox = Math.min(0, Math.max(1080 - 941 * sc, ox)); oy = Math.min(0, Math.max(1920 - 1672 * sc, oy));
   return `translate(${ox}px, ${oy}px) scale(${sc})`;
@@ -130,38 +117,37 @@ function render(t) {
   const studio = shot.type === 'studio';
   const T = R.timeline, inIntro = t < T.introEnd, inOutro = t >= T.outroStart;
   $('studio').style.display = studio ? 'block' : 'none';
-  $('news').style.display = shot.type === 'news' ? 'block' : 'none';
-  $('broll').style.display = shot.type === 'broll' ? 'block' : 'none';
-  if (shot.type === 'broll') {
-    const clip = R.broll[shot.clip] || R.broll[0];
-    const i = Math.floor((t - shot.start + (shot.from || 0)) * 30) % clip.count;
-    const src = `${clip.dir}/${String(i + 1).padStart(5, '0')}.jpg`;
-    if ($('brollImg').getAttribute('src') !== src) $('brollImg').setAttribute('src', src);
-  }
-  $('pip').style.display = $('pipTag').style.display = studio ? 'none' : 'block';
-  $('headline').style.display = studio ? 'none' : 'block';
-  $('lower').style.display = inIntro ? 'block' : 'none';
-  $('outro').style.display = inOutro ? 'block' : 'none';
-  const subsOn = !inIntro && !inOutro;
-  $('subs').style.display = subsOn ? 'flex' : 'none';
-  $('subs').className = studio ? 'center' : '';
+  $('media').style.display = studio ? 'none' : 'block';
+  $('pip').style.display = studio ? 'none' : 'block';
+  $('hook').style.display = inIntro ? 'block' : 'none';
+  $('outro').style.display = inOutro ? 'flex' : 'none';
   $('ticker').style.display = inOutro ? 'none' : 'flex';
 
   if (studio) {
     const c = mixCam(CAMS[shot.cam0], CAMS[shot.cam1], ease(local));
     $('hostMain').style.transform = camTransform(c, t);
-    $('studio').style.opacity = si === 0 ? ease(t / .45) : 1;
+    $('studio').style.opacity = si === 0 ? ease(t / .4) : 1;
     const sw = (t % 6.5) / 1.6; $('sweep').style.left = (sw < 1 ? -400 + sw * 1900 : -600) + 'px';
-  } else if (shot.type === 'news') {
-    const p = shot.pan || 0, k = clamp(local);
-    const s = 1.05 + k * .12, dx = (p ? 1 : -1) * k * 40, dy = -k * 30;
-    $('photo').style.transform = `scale(${s}) translate(${dx}px, ${dy}px)`;
-  }
-  if (!studio) { // заголовок и круг с диктором появляются после студии, между фото и видео — остаются
+  } else {
+    // склейки внутри новости: фото и видео сменяют друг друга, на каждой — «толчок» зума
+    const cut = R.cuts.find((c) => t >= c.start && t < c.end) || R.cuts[R.cuts.length - 1];
+    const k = (t - cut.start) / Math.max(.01, cut.end - cut.start), punch = 1 + .1 * (1 - ease((t - cut.start) / .3));
+    const z = punch * (1.02 + k * .08), dx = (cut.dir || 1) * k * 30;
+    if (cut.kind === 'clip') {
+      const clip = R.broll[cut.clip] || R.broll[0];
+      const i = Math.floor((t - cut.start + (cut.from || 0)) * 30) % clip.count;
+      const src = `${clip.dir}/${String(i + 1).padStart(5, '0')}.jpg`;
+      if ($('clip').getAttribute('src') !== src) $('clip').setAttribute('src', src);
+      $('clip').style.display = 'block'; $('photo').style.display = 'none';
+      $('clip').style.transform = `scale(${z}) translateX(${dx}px)`;
+      $('credit').innerHTML = `<b>ИЛЛЮСТРАЦИЯЛЫҚ КАДРЛАР</b><br>Видео: ${clip.credit || ''}`;
+    } else {
+      $('clip').style.display = 'none'; $('photo').style.display = 'block';
+      $('photo').style.transform = `scale(${z}) translateX(${dx}px)`;
+      $('credit').innerHTML = R.photoCredit ? `Фото: ${R.photoCredit}` : '';
+    }
     const prev = R.shots[si - 1], from = prev && prev.type === 'studio' ? shot.start : -10;
-    const h = ease((t - from - .15) / .55);
-    $('headline').style.transform = `translateY(${(1 - h) * -40}px)`; $('headline').style.opacity = h;
-    const pp = ease((t - from - .25) / .5); $('pip').style.transform = `scale(${.6 + .4 * pp})`; $('pip').style.opacity = pp;
+    const pp = back((t - from - .1) / .45); $('pip').style.transform = `scale(${pp})`;
   }
   for (const pre of ['', 'p-']) {
     const g = document.getElementById(pre + 'glow'); if (g) g.style.opacity = (.25 + .25 * (0.5 + 0.5 * Math.sin(t * 2.4))).toFixed(3);
@@ -172,24 +158,30 @@ function render(t) {
   setMouth('', m); setMouth('p-', m);
   let wipe = -1, flash = 0;
   for (let i = 1; i < R.shots.length; i++) {
-    const b = R.shots[i].start, d = t - b;
-    const a = R.shots[i - 1].type, b2 = R.shots[i].type;
-    if ((a === 'studio') !== (b2 === 'studio')) { if (d > -.45 && d < .45) wipe = (d + .45) / .9; }
-    else if (d >= 0 && d < .12) flash = (a === 'studio' ? .32 : .22) * (1 - d / .12);
+    const a = R.shots[i - 1].type, b2 = R.shots[i].type, d = t - R.shots[i].start;
+    if ((a === 'studio') !== (b2 === 'studio')) { if (d > -.4 && d < .4) wipe = (d + .4) / .8; }
+    else if (d >= 0 && d < .1) flash = .35 * (1 - d / .1);
   }
+  for (const c of R.cuts) { const d = t - c.start; if (d >= 0 && d < .08 && !c.first) flash = Math.max(flash, .18 * (1 - d / .08)); }
   $('wipe').style.left = wipe < 0 ? '-3000px' : (-1700 + wipe * 3400) + 'px';
   $('flash').style.opacity = flash;
-  const lw = ease((t - .6) / .6); $('lower').style.transform = `translateX(${(1 - lw) * -1100}px)`;
-  const o = ease((t - T.outroStart - .3) / .6); $('outro').style.opacity = o;
-  const tw = Math.max(1, tickW()), run = 1000 - (t * 150) % (tw + 1000);
+  const hk = ease((t - .5) / .5) * (1 - ease((t - T.introEnd + .6) / .4));
+  $('hook').style.opacity = hk; $('hook').style.transform = `translateY(${(1 - ease((t - .5) / .5)) * 60}px)`;
+  const o = ease((t - T.outroStart - .2) / .5); $('outro').style.opacity = o; $('outro').querySelector('.cta').style.transform = `scale(${.8 + .2 * back((t - T.outroStart - .2) / .5)})`;
+  const tw = Math.max(1, $('tickText').scrollWidth), run = 1000 - (t * 150) % (tw + 1000);
   $('tickText').style.left = run + 'px';
   const ph = R.phrases.find((x) => t >= x.start && t < x.end);
-  $('subText').innerHTML = ph ? ph.words.map((wd) => `<span class="${t >= wd.end ? 'done' : t >= wd.start ? 'on' : 'todo'}">${wd.text}</span>`).join(' ') : '';
-  $('subs').style.visibility = ph ? 'visible' : 'hidden';
+  if (ph && !inIntro && !inOutro) {
+    $('capText').innerHTML = ph.words.map((wd) => {
+      const pop = back((t - wd.start) / .16), cls = t >= wd.start && t < wd.end + .05 ? 'on' : t < wd.start ? 'todo' : '';
+      return `<span class="${cls}" style="transform:scale(${t < wd.start ? .6 : .75 + .25 * pop})">${wd.text}</span>`;
+    }).join('');
+    $('caps').style.display = 'flex';
+  } else $('caps').style.display = 'none';
 }
 window.render = render;
-window.ready = () => new Promise((res) => { const im = $('brollImg');
-  if ($('broll').style.display === 'none' || !im.getAttribute('src') || im.complete) return res();
+window.ready = () => new Promise((res) => { const im = $('clip');
+  if ($('media').style.display === 'none' || im.style.display === 'none' || !im.getAttribute('src') || im.complete) return res();
   im.onload = im.onerror = () => res(); });
 render(0);
 </script>

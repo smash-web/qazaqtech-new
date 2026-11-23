@@ -85,7 +85,7 @@ def main() -> int:
         photo.write_bytes(resp.content)
         if resp.headers.get("content-type", "").endswith("webp"):
             photo = photo.rename(work / "photo.webp")
-        clips = []
+        clips, credits = [], []
         for i, c in enumerate(job.get("broll") or []):
             try:
                 v = requests.get(c["url"], timeout=120, headers={"User-Agent": "TechTalqReels/1.0"})
@@ -93,6 +93,7 @@ def main() -> int:
                 path = work / f"broll{i}.mp4"
                 path.write_bytes(v.content)
                 clips.append(path)
+                credits.append(c.get("credit", ""))
                 print(f"Видео {i + 1}: «{c.get('query')}» — {c.get('credit')}, {c.get('page')}")
             except requests.RequestException as exc:
                 print("Видео не скачалось:", exc)
@@ -101,7 +102,9 @@ def main() -> int:
         reel = render.build_reel(title=job["title"], category=job["category"], teaser=job["teaser"],
                                  date_label=job["date_label"], photo=photo, alignment=job["alignment"],
                                  duration=duration, intro_end=intro_end, outro_start=outro_start,
-                                 headline_start=headline, ticker=job.get("ticker") or [], broll=broll)
+                                 headline_start=headline, ticker=job.get("ticker") or [],
+                                 broll=[dict(b, credit=credits[b["src"]]) for b in broll],
+                                 photo_credit=job.get("photo_credit") or "")
         out = work / f"techtalq-{aid}-{job['slug'][:60]}.mp4"
         render.render_video(reel, audio, out)
         size = out.stat().st_size

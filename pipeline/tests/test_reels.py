@@ -179,4 +179,10 @@ def test_pexels_picks_vertical_hd(monkeypatch):
 
     monkeypatch.setattr(reels.requests, "get", lambda *a, **k: Resp())
     clips = reels.pexels_clips("key", ["data center"], "ua", want=1)
-    assert clips == [{"url": "hd", "query": "data center", "duration": 12, "credit": "Ann", "page": "https://pexels.com/v/2"}]
+    assert clips == [{"url": "hd", "query": "data center", "duration": 12, "credit": "Ann / Pexels", "page": "https://pexels.com/v/2"}]
+
+
+def test_commons_transcoded_url():
+    from qtnews.reels import _transcoded
+    assert _transcoded("https://upload.wikimedia.org/wikipedia/commons/a/ab/Nvidia_GPU.webm", 720) == \
+        "https://upload.wikimedia.org/wikipedia/commons/transcoded/a/ab/Nvidia_GPU.webm/Nvidia_GPU.webm.720p.vp9.webm"
