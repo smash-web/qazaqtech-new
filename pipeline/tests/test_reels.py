@@ -93,7 +93,7 @@ def test_script_hook_first_and_question_outro():
     s = write_script(FakeLLM(), "m", art(1))
     assert s["intro"] == "Apple сотқа екі жүз елу миллион доллар төлейді. Siri кешіккені үшін."
     assert s["outro"] == f"Сіз Siri-ді қолданасыз ба? {SUBSCRIBE}" and s["subjects"] == ["Apple"]
-    assert len(s["teaser"]) <= 44
+    assert s["teaser"] == "Apple сотқа екі жүз елу миллион доллар төлейді."
 
 
 def test_pick_uses_ai_choice(db):
@@ -215,7 +215,8 @@ def test_pixabay_picks_large_and_hides_key(monkeypatch):
         def json(self):
             return {"hits": [
                 {"id": 1, "duration": 3, "videos": {"large": {"url": "short", "width": 1920, "height": 1080}}},
-                {"id": 2, "duration": 14, "user": "Bob", "pageURL": "https://pixabay.com/v/2",
+                {"id": 3, "duration": 20, "tags": "mountains, nature", "videos": {"large": {"url": "hills", "width": 1920, "height": 1080}}},
+                {"id": 2, "duration": 14, "user": "Bob", "pageURL": "https://pixabay.com/v/2", "tags": "server, data",
                  "videos": {"large": {"url": "big", "width": 1920, "height": 1080}, "medium": {"url": "mid", "width": 1280, "height": 720}}}]}
 
     monkeypatch.setattr(reels.requests, "get", lambda *a, **k: Resp())

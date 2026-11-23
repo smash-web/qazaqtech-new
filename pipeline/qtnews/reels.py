@@ -36,7 +36,7 @@ DEFAULT_VOICES = {"f": "EXAVITQu4vr4xnSDxMaL", "m": "JBFqnCBsd6RMkjVDRZzb"}  # �
 SCRIPT_SYSTEM = (
     "Сен — Instagram Reels пен TikTok-қа арналған қазақ тіліндегі IT-жаңалықтар арнасының сценаристісің. "
     "Мақсатың — адам бірінші секундта тоқтап, соңына дейін қарап, пікір жазып, арнаға жазылатындай мәтін. "
-    "Жанды сөйлеу тілінде, қысқа сөйлемдермен, «сен»/«сіз» деп көрерменге тікелей айт. Кіріспе, сәлемдесу, "
+    "Жанды сөйлеу тілінде, қысқа сөйлемдермен, көрерменге тек «сіз» деп тікелей айт (ешқашан «сен» емес). Кіріспе, сәлемдесу, "
     "«бүгін біз айтамыз» сияқты бос сөз жоқ — бірден іске. Тек мақаладағы фактілерді қолдан, ойдан қоспа, "
     "асыра сілтеме. ДӘЛДІК: кім кімге не істегенін мақаладағыдай нақты жаз — компанияның әрекетін оның иесіне "
     "немесе басшысына телме, «сотқа берді» мен «сотталды», «жоспарлап отыр» мен «жасады» сияқты ұғымдарды шатастырма. "
@@ -54,7 +54,6 @@ SCRIPT_PROMPT = """Мақала:
   "lead": "не болғанын бір сөйлеммен түсіндір (10–18 сөз)",
   "body": "неге маңызды: мәні, қарапайым адамға, Қазақстанға не өзгереді, қызықты деталь; 3–4 қысқа сөйлем, 40–65 сөз",
   "question": "пікір жазуға шақыратын даулы немесе жеке сұрақ (6–12 сөз)",
-  "teaser": "экрандағы хук, 5–7 сөз, 40 таңбадан аспасын",
   "subjects": ["нақты нысандар ағылшынша: компания, өнім, қала (1–3 атау, адам аты емес)"],
   "broll": ["тақырыпқа нақты сай стоктық бейне сұрауы ағылшынша, 2–4 сөз", "екінші", "үшінші"]
 }}
@@ -134,6 +133,7 @@ def pexels_clips(api_key: str, queries: list[str], user_agent: str, want: int = 
 
 
 PIXABAY = "https://pixabay.com/api/videos/"
+_STOP = {"the", "and", "with", "view", "closeup", "close", "shot", "scene", "background"}
 
 
 def pixabay_clips(api_key: str, queries: list[str], user_agent: str, want: int = 2, timeout: int = 30) -> list[dict]:
@@ -151,8 +151,12 @@ def pixabay_clips(api_key: str, queries: list[str], user_agent: str, want: int =
         except (requests.RequestException, ValueError) as exc:
             log.warning("Pixabay «%s»: %s", q, str(exc).replace(api_key, "***"))
             continue
+        words = {w for w in re.findall(r"[a-z]{3,}", q.lower()) if w not in _STOP}
         for h in hits:
             if h.get("id") in seen or (h.get("duration") or 0) < 5:
+                continue
+            tags = str(h.get("tags") or "").lower()
+            if words and not any(w in tags for w in words):  # Pixabay находит «похожее» — берём только по тегам
                 continue
             vids = h.get("videos") or {}
             # вертикальные — в приоритете; иначе самое крупное (кадрируем)
@@ -261,23 +265,24 @@ def write_script(llm: LLM, model: str, article: dict) -> dict:
                                                      body=lexical_text(article.get("content"))))
     hook, lead = _clean(data.get("hook", "")), _clean(data.get("lead", ""))
     body, question = _clean(data.get("body", "")), _clean(data.get("question", ""))
-    teaser = _clean(data.get("teaser") or hook)
+    teaser = hook  # на экране — ровно то, что говорит диктор (никаких отдельных «заголовков» от ИИ)
     if not hook or not lead or len(body.split()) < 15:
         raise LLMError("ИИ вернул неполный сценарий рилса")
     end = lambda x: x if x.endswith((".", "!", "?", "…")) else x + "."  # noqa: E731
     hook, lead, body = end(hook), end(lead), end(body)
     if question and not question.endswith("?"):
         question = question.rstrip(".!") + "?"
-    if len(teaser) > 44:
-        teaser = teaser[:43].rstrip() + "…"
+    teaser = hook
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip()][:3]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
     return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body,
             "outro": f"{question} {SUBSCRIBE}".strip(), "broll": broll, "subjects": subjects}
 
 
-def _ok_to_render(rec: dict | None, now: datetime) -> bool:
+def _ok_to_render(rec: dict | None, now: datetime, force: bool = False) -> bool:
     if not rec:
+        return True
+    if force and rec["status"] in ("preview", "failed"):  # ручной предпросмотр можно пересобрать
         return True
     if rec["status"] in ("posted", "preview") or rec["attempts"] >= MAX_ATTEMPTS:
         return False
@@ -288,9 +293,9 @@ def _ok_to_render(rec: dict | None, now: datetime) -> bool:
 
 
 def pick_article(cms: CMSClient, db: Database, settings: dict, now: datetime, llm: LLM | None = None,
-                 model: str = "") -> dict | None:
+                 model: str = "", force: bool = False) -> dict | None:
     since = now - timedelta(hours=int(settings.get("lookbackHours") or 12))
-    cands = [a for a in cms.published_since(since.isoformat()) if a.get("coverImage") and _ok_to_render(db.social_get(a["id"], REEL), now)]
+    cands = [a for a in cms.published_since(since.isoformat()) if a.get("coverImage") and _ok_to_render(db.social_get(a["id"], REEL), now, force)]
     if not cands:
         return None
     cands.sort(key=lambda a: (float(a.get("importanceScore") or 0), a.get("publishedAt") or ""), reverse=True)
@@ -335,7 +340,7 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         return {"skip": "daily limit"}
     if llm is None:
         return {"skip": "no llm"}
-    article = pick_article(cms, db, s, now, llm, cfg.writer_model)
+    article = pick_article(cms, db, s, now, llm, cfg.writer_model, force)
     if not article:
         return {"skip": "no fresh articles"}
     aid = article["id"]
