@@ -230,3 +230,28 @@ def test_tags_hidden_on_screen():
             return json.dumps({"hook": "[excited] Apple сотқа ақша төлейді", "lead": "Siri үшін", "body": BODY, "question": "Қалай ойлайсыз"})
     s = write_script(L(), "m", art(1), tags=True)
     assert s["teaser"] == "Apple сотқа ақша төлейді." and s["intro"].startswith("[excited]")
+
+
+def test_review_caption_puts_hook_first():
+    from qtnews.reels import review_caption
+    art = {"title": "Заголовок", "excerpt": "Анонс", "sources": [{"name": "The Verge"}], "category": None}
+    cap = review_caption(art, "https://techtalq.kz", "Хук сөйлем", "#TechTalQ")
+    assert cap.startswith("Хук сөйлем\n\nЗаголовок")
+    assert "#TechTalQ" in cap
+
+
+def test_add_voice_returns_id(monkeypatch):
+    from qtnews.reels import ElevenLabsClient
+
+    class R:
+        status_code = 200
+        def json(self):
+            return {"voice_id": "v123"}
+    c = ElevenLabsClient("k", "ua")
+    seen = {}
+    def fake_post(url, **kw):
+        seen.update(url=url, **kw)
+        return R()
+    monkeypatch.setattr(c.session, "post", fake_post)
+    assert c.add_voice("Диктор", b"abc") == "v123"
+    assert seen["url"].endswith("/voices/add") and seen["files"][0][0] == "files"

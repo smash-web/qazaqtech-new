@@ -125,7 +125,7 @@ def main() -> int:
         call("reel_publish", {"article_id": aid, "preview_url": url})
         print("ПРЕДПРОСМОТР:", url)
         return 0
-    res = call("reel_publish", {"article_id": aid, "video_url": url}, timeout=320)
+    res = call("reel_publish", {"article_id": aid, "video_url": url, "teaser": job.get("teaser")}, timeout=320)
     print(json.dumps({k: v for k, v in res.items() if k != "seconds"}, ensure_ascii=False))
     return 0
 

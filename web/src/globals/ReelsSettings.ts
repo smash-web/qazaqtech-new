@@ -83,6 +83,10 @@ export const ReelsSettings: GlobalConfig = {
         { name: 'publishTikTok', label: 'Черновиком в TikTok', type: 'checkbox', defaultValue: false },
       ],
     },
+    {
+      name: 'reviewChatId', label: 'Присылать готовые рилсы в Telegram-чат (ID)', type: 'text',
+      admin: { description: 'Видео и готовый текст подписи для ручной публикации в Instagram. Бот — тот же, что в настройках Telegram.' },
+    },
     // Статус — заполняет конвейер
     {
       type: 'row',

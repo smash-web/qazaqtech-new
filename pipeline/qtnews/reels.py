@@ -103,6 +103,39 @@ class ElevenLabsClient:
             raise ElevenLabsError("ElevenLabs вернул ответ без звука или таймкодов")
         return data
 
+    def add_voice(self, name: str, audio: bytes, filename: str = "sample.mp3", description: str = "") -> str:
+        """Мгновенный клон голоса (Instant Voice Cloning) по образцу. Возвращает voice_id."""
+        resp = self.session.post(f"{ELEVEN}/voices/add", timeout=self.timeout,
+                                 data={"name": name, "description": description, "remove_background_noise": "true"},
+                                 files=[("files", (filename, audio, "audio/mpeg"))])
+        if resp.status_code >= 400:
+            try:
+                detail = resp.json().get("detail")
+                msg = detail.get("message") if isinstance(detail, dict) else str(detail)
+            except ValueError:
+                msg = resp.text[:300]
+            raise ElevenLabsError(f"ElevenLabs {resp.status_code}: {msg}")
+        return str(resp.json()["voice_id"])
+
+
+def clone_voice(cfg: Config, cms: CMSClient, payload: dict, eleven: ElevenLabsClient | None = None) -> dict:
+    """Клон голоса диктора: образец лежит зашифрованным (Fernet) по ссылке, ключ приходит в запросе.
+    Полученный voice_id записывается в настройки рилсов."""
+    from cryptography.fernet import Fernet
+
+    s = cms.reels_settings()
+    key = (s.get("elevenlabsApiKey") or "").strip()
+    if not key:
+        return {"error": "no elevenlabs key"}
+    raw = requests.get(payload["url"], timeout=60, headers={"User-Agent": cfg.user_agent})
+    raw.raise_for_status()
+    audio = Fernet(payload["fernet_key"].encode()).decrypt(raw.content)
+    eleven = eleven or ElevenLabsClient(key, cfg.user_agent)
+    vid = eleven.add_voice(payload.get("name") or "TechTalQ диктор", audio,
+                           description="Диктор TechTalQ (с разрешения владельца голоса)")
+    cms.update_reels_settings({"voiceId": vid})
+    return {"voice_id": vid}
+
 
 PEXELS = "https://api.pexels.com/videos/search"
 
@@ -459,6 +492,26 @@ def _tt_reel(cfg: Config, s: dict, article: dict, video_url: str) -> str:
     return str(data.get("publish_id") or "")
 
 
+def review_caption(article: dict, site_url: str, teaser: str = "", hashtags: str = "") -> str:
+    """Готовый текст для ручной публикации в Instagram: хук + обычная подпись."""
+    base = build_caption(article, site_url, hashtags)
+    hook = (teaser or "").strip()
+    return f"{hook}\n\n{base}" if hook and hook not in base else base
+
+
+def _review_reel(cfg: Config, s: dict, article: dict, video_url: str, teaser: str, client: TelegramClient | None) -> str:
+    """Присылает готовый рилс и текст подписи в личный чат — для ручной публикации в Instagram."""
+    token, chat = (s.get("_botToken") or "").strip(), (s.get("reviewChatId") or "").strip()
+    if not token or not chat:
+        raise TelegramError("не задан чат для рилсов или бот Telegram")
+    client = client or TelegramClient(token, cfg.user_agent, timeout=120)
+    msg = client._call("sendVideo", chat_id=chat, video=video_url, supports_streaming=True, width=1080, height=1920,
+                       caption=f"🎬 Рилс для Instagram\n{(article.get('title') or '')[:900]}")
+    client._call("sendMessage", chat_id=chat, text=review_caption(article, cfg.site_url, teaser, s.get("_hashtags") or ""),
+                 disable_web_page_preview=True)
+    return str(msg.get("message_id") or "")
+
+
 def publish_reel(cfg: Config, db: Database, cms: CMSClient, payload: dict, ig: InstagramClient | None = None,
                  tg: TelegramClient | None = None, now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
@@ -483,7 +536,11 @@ def publish_reel(cfg: Config, db: Database, cms: CMSClient, payload: dict, ig: I
     errors: list[str] = []
     targets = [("instagram", s.get("publishInstagram", True), lambda: _ig_reel(cfg, cms.instagram_settings(), article, video_url, ig)),
                ("telegram", s.get("publishTelegram", True), lambda: _tg_reel(cfg, cms.telegram_settings(), article, video_url, tg)),
-               ("tiktok", s.get("publishTikTok", False), lambda: _tt_reel(cfg, cms.tiktok_settings(), article, video_url))]
+               ("tiktok", s.get("publishTikTok", False), lambda: _tt_reel(cfg, cms.tiktok_settings(), article, video_url)),
+               ("review", bool((s.get("reviewChatId") or "").strip()),
+                lambda: _review_reel(cfg, {**s, "_botToken": cms.telegram_settings().get("botToken"),
+                                           "_hashtags": cms.instagram_settings().get("hashtags")},
+                                     article, video_url, str(payload.get("teaser") or ""), tg))]
     for name, on, fn in targets:
         if not on:
             continue
