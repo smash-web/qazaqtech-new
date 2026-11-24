@@ -156,6 +156,9 @@ class FakeTG:
         self.calls.append((method, payload))
         return {"message_id": 7}
 
+    def send_video_file(self, chat_id, video_url, **payload):
+        return self._call("sendVideo", chat_id=chat_id, video=video_url, **payload)
+
 
 def test_publish_to_instagram_and_telegram(db):
     cms, ig, tg = FakeCMS(settings(), [art(1)]), FakeIG(), FakeTG()
