@@ -293,6 +293,7 @@ def test_source_videos_finds_og_video(monkeypatch):
             '<video src="/media/thumb-preview.mp4"></video><iframe src="https://youtube.com/embed/x"></iframe>')
     monkeypatch.setattr(R.requests, "get", lambda url, **k: Resp(page, {"Content-Type": "text/html"}))
     monkeypatch.setattr(R.requests, "head", lambda url, **k: Resp("", {"Content-Length": "5000000"}))
-    got = R.source_videos({"sources": [{"name": "Apple Newsroom", "url": "https://apple.com/newsroom/x"}]}, "ua")
+    got = R.source_videos({"sources": [{"name": "CNBC", "url": "https://www.cnbc.com/x"},
+                                       {"name": "Apple Newsroom", "url": "https://www.apple.com/newsroom/x"}]}, "ua")
     assert [c["url"] for c in got] == ["https://cdn.example.com/launch.mp4"]
     assert got[0]["source"] and got[0]["credit"] == "Apple Newsroom"

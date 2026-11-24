@@ -272,13 +272,30 @@ _VIDEO_URL = re.compile(r"""https?://[^\s"'<>()]+?\.(?:mp4|webm|m4v)(?:\?[^\s"'<
 _SKIP_VIDEO = ("preview", "thumb", "teaser-small", "/ads/", "doubleclick", "advert")
 
 
+# только официальные сайты компаний и ведомств: у СМИ (CNBC, The Verge…) видео на странице — их авторский
+# контент и часто вообще не про новость (промо эфира), такие не берём
+OFFICIAL_DOMAINS = (
+    "apple.com", "openai.com", "nvidia.com", "nvidianews.nvidia.com", "blog.google", "google.com", "deepmind.google",
+    "microsoft.com", "samsung.com", "meta.com", "about.fb.com", "tesla.com", "spacex.com", "nasa.gov", "esa.int",
+    "anthropic.com", "aboutamazon.com", "amazon.com", "x.ai", "huawei.com", "mi.com", "xiaomi.com", "sony.com",
+    "intel.com", "amd.com", "qualcomm.com", "arm.com", "ibm.com", "oracle.com", "adobe.com", "netflix.com",
+    "rockstargames.com", "playstation.com", "xbox.com", "nintendo.com", "epicgames.com", "valvesoftware.com",
+    "telegram.org", "whatsapp.com", "yandex.com", "yandex.ru", "kaspi.kz", "gov.kz", "astanahub.com",
+)
+
+
+def _official(url: str) -> bool:
+    host = (re.match(r"https?://([^/:]+)", url or "") or [None, ""])[1].lower()
+    return any(host == d or host.endswith("." + d) for d in OFFICIAL_DOMAINS)
+
+
 def source_videos(article: dict, user_agent: str, timeout: int = 20, limit: int = 3) -> list[dict]:
     """Видео из самой новости: прямые файлы (mp4/webm) со страниц первоисточников — пресс-релизы, блоги
     компаний (Apple Newsroom, OpenAI, NVIDIA…). Встроенные YouTube/Vimeo не берём."""
     out: list[dict] = []
     for src in article.get("sources") or []:
         url, name = (src or {}).get("url"), (src or {}).get("name") or ""
-        if not url or len(out) >= limit:
+        if not url or len(out) >= limit or not _official(url):
             continue
         try:
             r = requests.get(url, timeout=timeout, headers={"User-Agent": user_agent, "Accept": "text/html"})
