@@ -84,6 +84,7 @@ def numbers_to_words(text: str) -> str:
     text = re.sub(rf"({NUM})\s*[–—-]\s*({NUM})\s*%(?:-(\w+))?",
                   lambda m: f"{_num(m[1])} – {_num(m[2])} пайыз{m[3] or ''}", text)
     text = re.sub(rf"({NUM})\s*%(?:-(\w+))?", lambda m: f"{_num(m[1])} пайыз{m[2] or ''}", text)
+    text = re.sub(r"пайыз дейін", "пайызға дейін", text)  # «91–94% дейін» → «…пайызға дейін»
     text = re.sub(rf"({NUM})\s*[–—]\s*({NUM})", lambda m: f"{_num(m[1])} – {_num(m[2])}", text)
     # номер версии в названии (GPT-6.2, iPhone 17) — «алты нүкте екі»
     text = re.sub(r"(?<=\w)[- ](\d+)\.(\d+)(?![\d%])", lambda m: f" {kk_number(int(m[1]))} нүкте {kk_number(int(m[2]))}", text)
