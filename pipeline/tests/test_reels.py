@@ -315,3 +315,16 @@ def test_big_number_with_case_suffix():
     assert for_speech("3 500 000 000-нан астам")[0] == "үш миллиард бес жүз миллионнан астам"
     assert for_speech("1 500 000-нан")[0] == "бір миллион бес жүз мыңнан"
     assert for_speech("2 миллиардқа")[0] == "екі миллиардқа"
+
+
+def test_choose_clips_fallback_when_ai_down(monkeypatch):
+    import qtnews.reels as R
+    monkeypatch.setattr(R.time, "sleep", lambda s: None)
+
+    class L:
+        def complete(self, **kw):
+            raise R.LLMError("503")
+    cands = [{"key": "a", "desc": "cigarette smoke", "query": "q1", "url": "1"},
+             {"key": "b", "desc": "server room", "query": "q1", "url": "2"},
+             {"key": "c", "desc": "laptop", "query": "q2", "url": "3"}]
+    assert [c["key"] for c in R.choose_clips(L(), "m", "t", ["x"], cands)] == ["b", "c"]

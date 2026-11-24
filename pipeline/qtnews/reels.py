@@ -14,6 +14,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -396,12 +397,22 @@ def choose_clips(llm: LLM, model: str, title: str, sentences: list[str], cands: 
         return []
     lines = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(sentences))
     cl = "\n".join(f"{c['key']}: {c['desc'][:120]}{' (V)' if c.get('vertical') else ''}" for c in cands)
-    try:
-        data = complete_json(llm, model=model, system="Ты — бильд-редактор новостных рилсов.", max_tokens=600,
-                             temperature=0.1, prompt=CLIP_PROMPT.format(title=title, sentences=lines, cands=cl, vert="; V — вертикальный"))
-    except LLMError as exc:
-        log.warning("Рилс: отбор кадров ИИ не удался: %s", exc)
-        return []
+    data = None
+    for attempt in range(3):  # Gemini иногда отвечает 503 «high demand» — пробуем ещё раз
+        try:
+            data = complete_json(llm, model=model, system="Ты — бильд-редактор новостных рилсов.", max_tokens=600,
+                                 temperature=0.1, prompt=CLIP_PROMPT.format(title=title, sentences=lines, cands=cl, vert="; V — вертикальный"))
+            break
+        except LLMError as exc:
+            log.warning("Рилс: отбор кадров ИИ не удался (%d): %s", attempt + 1, exc)
+            time.sleep(4 * (attempt + 1))
+    if data is None:  # ИИ недоступен — берём лучший кадр на каждый запрос, но без запрещённых тем
+        bad = ("smok", "cigar", "alcohol", "beer", "wine", "gun", "weapon", "blood", "nude")
+        firsts: dict[str, dict] = {}
+        for c in cands:
+            if c["query"] not in firsts and not any(b in c["desc"].lower() for b in bad):
+                firsts[c["query"]] = c
+        return list(firsts.values())
     picks = data.get("picks") if isinstance(data, dict) else data if isinstance(data, list) else []
     by_key, used, res = {c["key"]: c for c in cands}, set(), []
     for k in picks or []:
