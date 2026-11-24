@@ -297,3 +297,13 @@ def test_source_videos_finds_og_video(monkeypatch):
                                        {"name": "Apple Newsroom", "url": "https://www.apple.com/newsroom/x"}]}, "ua")
     assert [c["url"] for c in got] == ["https://cdn.example.com/launch.mp4"]
     assert got[0]["source"] and got[0]["credit"] == "Apple Newsroom"
+
+
+def test_kazakh_ordinals_cases_and_abbreviations():
+    from qtnews.speech import for_speech, kk_ordinal
+    assert [kk_ordinal(n) for n in (1, 20, 30, 40, 41, 50, 59, 2030)] == [
+        "бірінші", "жиырмасыншы", "отызыншы", "қырқыншы", "қырық бірінші", "елуінші", "елу тоғызыншы", "екі мың отызыншы"]
+    assert for_speech("2030 жылға дейін")[0] == "екі мың отызыншы жылға дейін"
+    assert for_speech("2030-ыншы жылы, 1-орын")[0] == "екі мың отызыншы жылы, бірінші орын"
+    assert for_speech("БҰҰ-ның саммиті")[0] == "Біріккен Ұлттар Ұйымының саммиті"
+    assert for_speech("АҚШ-қа, ЕО-ның")[0] == "Америка Құрама Штаттарына, Еуропалық Одақтың"

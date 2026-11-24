@@ -75,7 +75,119 @@ def _roman(tok: str) -> int | None:
     return total
 
 
+# --- казахская грамматика: порядковые числительные и падежные окончания -------------------------------
+BACK, FRONT = set("аоұы"), set("әөүіеиэ")
+VOICELESS = set("кқпстфхцчшщ")
+SONOR_MNN = set("мнң")
+
+
+def _back(word: str) -> bool:
+    for ch in reversed(word.lower()):
+        if ch in BACK:
+            return True
+        if ch in FRONT:
+            return False
+    return True
+
+
+def kk_ordinal(n: int) -> str:
+    """бір → бірінші, отыз → отызыншы, жиырма → жиырмасыншы, 2030 → екі мың отызыншы."""
+    words = kk_number(n).split(" ")
+    last = words[-1]
+    special = {"жиырма": "жиырмасыншы", "қырық": "қырқыншы", "алты": "алтыншы"}
+    if last in special:
+        words[-1] = special[last]
+    elif last[-1] in "аеыіоөұүюяэә":  # «у» как согласный: елу → елуінші
+        words[-1] = last + ("ншы" if _back(last) else "нші")
+    else:
+        words[-1] = last + ("ыншы" if _back(last) else "інші")
+    return " ".join(words)
+
+
+CASES = {  # окончание (как написано после дефиса) → падеж
+    "ның": "gen", "нің": "gen", "дың": "gen", "дің": "gen", "тың": "gen", "тің": "gen",
+    "ға": "dat", "ге": "dat", "қа": "dat", "ке": "dat", "на": "dat", "не": "dat",
+    "да": "loc", "де": "loc", "та": "loc", "те": "loc", "нда": "loc", "нде": "loc",
+    "дан": "abl", "ден": "abl", "тан": "abl", "тен": "abl", "нан": "abl", "нен": "abl",
+    "ны": "acc", "ні": "acc", "ды": "acc", "ді": "acc", "ты": "acc", "ті": "acc", "н": "acc",
+    "мен": "ins", "бен": "ins", "пен": "ins",
+}
+
+
+def kk_inflect(word: str, case: str, possessive: bool = False) -> str:
+    """Падежное окончание к слову по закону сингармонизма (Ұйымы + gen → Ұйымының, Одақ + gen → Одақтың)."""
+    back, last = _back(word), word[-1].lower()
+    a, e = ("а", "ы") if back else ("е", "і")
+    vowel = last in "аеыіоөұүэәяюи"
+    if possessive:
+        return word + {"gen": f"н{e}ң", "dat": f"н{a}", "loc": f"нд{a}", "abl": f"н{a}н", "acc": "н",
+                       "ins": "мен"}[case]
+    if case == "gen":
+        c = "н" if vowel or last in SONOR_MNN else "т" if last in VOICELESS else "д"
+        return word + f"{c}{e}ң"
+    if case == "dat":
+        return word + (("қ" if back else "к") if last in VOICELESS else ("ғ" if back else "г")) + a
+    if case == "loc":
+        return word + ("т" if last in VOICELESS else "д") + a
+    if case == "abl":
+        c = "т" if last in VOICELESS else "н" if last in SONOR_MNN else "д"
+        return word + f"{c}{a}н"
+    if case == "acc":
+        c = "н" if vowel else "т" if last in VOICELESS else "д"
+        return word + c + e
+    if case == "ins":
+        return word + ("п" if last in VOICELESS else "б" if last in "лмнңзж" else "м") + "ен"
+    return word
+
+
+def _with_suffix(phrase: str, suffix: str, possessive: bool = False) -> str:
+    case = CASES.get(suffix.lower())
+    if not case:
+        return phrase + suffix
+    head, _, last = phrase.rpartition(" ")
+    return (head + " " if head else "") + kk_inflect(last, case, possessive)
+
+
+# казахские аббревиатуры — голос читает их как слово («бругро»), поэтому говорим полностью
+ABBR = {  # аббревиатура → (полностью, оканчивается притяжательным -ы/-і/-сы/-сі)
+    "БҰҰ": ("Біріккен Ұлттар Ұйымы", True), "АҚШ": ("Америка Құрама Штаттары", True),
+    "ЕО": ("Еуропалық Одақ", False), "ҚР": ("Қазақстан Республикасы", True), "ҚХР": ("Қытай Халық Республикасы", True),
+    "РФ": ("Ресей Федерациясы", True), "ТМД": ("Тәуелсіз Мемлекеттер Достастығы", True),
+    "ЕАЭО": ("Еуразиялық экономикалық одақ", False), "ДДСҰ": ("Дүниежүзілік денсаулық сақтау ұйымы", True),
+    "ХВҚ": ("Халықаралық валюта қоры", True), "ҰҚК": ("Ұлттық қауіпсіздік комитеті", True),
+    "ІІМ": ("Ішкі істер министрлігі", True), "ҰБТ": ("Ұлттық бірыңғай тестілеу", False),
+    "ЖИ": ("жасанды интеллект", False), "ЖОО": ("жоғары оқу орны", True),
+    "БАҚ": ("бұқаралық ақпарат құралдары", True), "ҚМГ": ("ҚазМұнайГаз", False),
+}
+
+
+def expand_abbr(text: str) -> str:
+    for ab in sorted(ABBR, key=len, reverse=True):
+        full, poss = ABBR[ab]
+        text = re.sub(rf"(?<![\w-]){ab}(?:-(\w+))?(?![\w])",
+                      lambda m, full=full, poss=poss: _with_suffix(full, m[1], poss) if m[1] else full, text)
+    return text
+
+
+MONTHS = "қаңтар|ақпан|наурыз|сәуір|мамыр|маусым|шілде|тамыз|қыркүйек|қазан|қараша|желтоқсан"
+
+
+def ordinals(text: str) -> str:
+    # 2030-ыншы, 41-інші, 5-ші → порядковое
+    text = re.sub(r"(?<![\w.,])(\d+)\s*-?\s*(?:ыншы|інші|ншы|нші|шы|ші)(?![\w])", lambda m: kk_ordinal(int(m[1])), text)
+    # годы и даты: «2030 жылға» → «екі мың отызыншы жылға», «24 қараша» → «жиырма төртінші қараша»
+    text = re.sub(rf"(?<![\w.,])(\d{{1,4}})(\s+)(?=жыл|{MONTHS})", lambda m: kk_ordinal(int(m[1])) + m[2], text, flags=re.I)
+    # «1-орын», «3-сынып»: число через дефис со словом — порядковое; с падежным окончанием — количественное
+    def hyphen(m: re.Match) -> str:
+        n, word = int(m[1]), m[2]
+        if word.lower() in CASES or word.lower() in ("сы", "сі", "ы", "і"):
+            return _with_suffix(kk_number(n), word)
+        return f"{kk_ordinal(n)} {word}"
+    return re.sub(r"(?<![\w.,])(\d+)-([а-яәіңғүұқөһё]+)", hyphen, text, flags=re.I)
+
+
 def numbers_to_words(text: str) -> str:
+    text = ordinals(text)
     # римские цифры после названия (GTA VI, Civilization VII) — по-казахски
     text = re.sub(r"(?<=\w[\s\u00a0])([IVX]{2,5})(?![\w])",
                   lambda m: kk_number(_roman(m[1])) if _roman(m[1]) else m[1], text)
@@ -112,7 +224,7 @@ def for_speech(text: str, extra: dict[str, str] | None = None) -> tuple[str, dic
             spoken = re.sub(r"\s+", NBSP, say[brand].strip())  # дефисы оставляем — так голос читает буквы слитно и естественно
             text = re.sub(pattern, spoken, text)
             shown[spoken] = brand
-    return numbers_to_words(text), shown
+    return numbers_to_words(expand_abbr(text)), shown
 
 
 def parse_dictionary(text: str) -> dict[str, str]:
