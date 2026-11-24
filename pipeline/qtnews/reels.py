@@ -392,6 +392,16 @@ CLIP_PROMPT = """Рилс-новость: «{title}».
 JSON: {{"picks": [id или null для каждого предложения по порядку]}}"""
 
 
+def _fallback_clips(cands: list[dict]) -> list[dict]:
+    """Без ИИ: первый кадр на каждый запрос (стоки уже ранжируют по запросу), без запрещённых тем."""
+    bad = ("smok", "cigar", "alcohol", "beer", "wine", "gun", "weapon", "blood", "nude")
+    firsts: dict[str, dict] = {}
+    for c in cands:
+        if c["query"] not in firsts and not any(b in c["desc"].lower() for b in bad):
+            firsts[c["query"]] = c
+    return list(firsts.values())
+
+
 def choose_clips(llm: LLM, model: str, title: str, sentences: list[str], cands: list[dict]) -> list[dict]:
     if not cands:
         return []
@@ -407,20 +417,21 @@ def choose_clips(llm: LLM, model: str, title: str, sentences: list[str], cands: 
             log.warning("Рилс: отбор кадров ИИ не удался (%d): %s", attempt + 1, exc)
             time.sleep(4 * (attempt + 1))
     if data is None:  # ИИ недоступен — берём лучший кадр на каждый запрос, но без запрещённых тем
-        bad = ("smok", "cigar", "alcohol", "beer", "wine", "gun", "weapon", "blood", "nude")
-        firsts: dict[str, dict] = {}
-        for c in cands:
-            if c["query"] not in firsts and not any(b in c["desc"].lower() for b in bad):
-                firsts[c["query"]] = c
-        return list(firsts.values())
+        return _fallback_clips(cands)
     picks = data.get("picks") if isinstance(data, dict) else data if isinstance(data, list) else []
+    log.info("Рилс: ИИ выбрал кадры %s", str(picks)[:300])
     by_key, used, res = {c["key"]: c for c in cands}, set(), []
     for k in picks or []:
-        c = by_key.get(str(k)) if k else None
+        if isinstance(k, dict):  # {"id": "pb1"} / {"sentence": 1, "id": "pb1"}
+            k = k.get("id") or k.get("key") or k.get("clip")
+        c = None
+        if k is not None and str(k).strip().lower() not in ("", "null", "none"):
+            kk = str(k).strip()
+            c = by_key.get(kk) or next((x for key, x in by_key.items() if key in kk or kk.endswith(key[2:])), None)
         if c and c["key"] not in used:
             used.add(c["key"])
             res.append(c)
-    return res
+    return res or _fallback_clips(cands)
 
 
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
