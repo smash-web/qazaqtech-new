@@ -54,6 +54,8 @@ def _num(tok: str) -> str:
     tok = tok.replace(" ", "")
     if re.fullmatch(r"\d+[.,]\d+", tok):
         a, b = re.split(r"[.,]", tok)
+        if b == "5":  # 3,5 → «үш жарым» — так говорят в эфире
+            return f"{kk_number(int(a))} жарым" if int(a) else "жарты"
         return f"{kk_number(int(a))} бүтін {kk_number(int(b))}"
     return kk_number(int(tok))
 
