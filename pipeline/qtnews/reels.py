@@ -23,7 +23,7 @@ from .cms import CMSClient
 from .config import Config
 from .db import Database
 from .llm import LLM, LLMError, complete_json
-from .speech import for_speech, parse_dictionary
+from .speech import BRANDS, for_speech, parse_dictionary
 from .social import InstagramClient, InstagramError, _parse, build_caption
 from .telegram import TelegramClient, TelegramError, article_url, build_post, normalize_channel
 
@@ -584,7 +584,9 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         gender = "f" if s.get("presenter") == "f" else "m"
         voice = (s.get("voiceId") or "").strip() or DEFAULT_VOICES[gender]
         # голосу — числа словами и бренды с произношением; длины частей считаем уже по озвучиваемому тексту
-        say = {**(script.get("say") or {}), **parse_dictionary(s.get("pronunciations") or "")}
+        # приоритет: словарь админки > наш словарь брендов > подсказки ИИ
+        say = {**{k: v for k, v in (script.get("say") or {}).items() if k not in BRANDS},
+               **parse_dictionary(s.get("pronunciations") or "")}
         script["say"] = say
         hook_s, shown = for_speech(script["hook"], script.get("say"))
         lead_s, m2 = for_speech(script["intro"][len(script["hook"]) + 1:], script.get("say"))
