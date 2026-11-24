@@ -281,3 +281,18 @@ def test_choose_clips_skips_unrelated():
              {"key": "pb2", "desc": "cigarette smoke", "url": "u2"}]
     got = choose_clips(L(), "m", "GTA VI", ["a", "b", "c"], cands)
     assert [c["key"] for c in got] == ["pb1"]
+
+
+def test_source_videos_finds_og_video(monkeypatch):
+    import qtnews.reels as R
+
+    class Resp:
+        def __init__(self, text="", headers=None, status=200):
+            self.text, self.headers, self.status_code = text, headers or {}, status
+    page = ('<meta property="og:video" content="https://cdn.example.com/launch.mp4">'
+            '<video src="/media/thumb-preview.mp4"></video><iframe src="https://youtube.com/embed/x"></iframe>')
+    monkeypatch.setattr(R.requests, "get", lambda url, **k: Resp(page, {"Content-Type": "text/html"}))
+    monkeypatch.setattr(R.requests, "head", lambda url, **k: Resp("", {"Content-Length": "5000000"}))
+    got = R.source_videos({"sources": [{"name": "Apple Newsroom", "url": "https://apple.com/newsroom/x"}]}, "ua")
+    assert [c["url"] for c in got] == ["https://cdn.example.com/launch.mp4"]
+    assert got[0]["source"] and got[0]["credit"] == "Apple Newsroom"

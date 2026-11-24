@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import html
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -264,6 +265,98 @@ def stock_candidates(queries: list[str], user_agent: str, pexels_key: str = "", 
                         break
             except (requests.RequestException, ValueError) as exc:
                 log.warning("Pixabay «%s»: %s", q, str(exc).replace(pixabay_key, "***"))
+    return out
+
+
+_VIDEO_URL = re.compile(r"""https?://[^\s"'<>()]+?\.(?:mp4|webm|m4v)(?:\?[^\s"'<>()]*)?""", re.I)
+_SKIP_VIDEO = ("preview", "thumb", "teaser-small", "/ads/", "doubleclick", "advert")
+
+
+def source_videos(article: dict, user_agent: str, timeout: int = 20, limit: int = 3) -> list[dict]:
+    """Видео из самой новости: прямые файлы (mp4/webm) со страниц первоисточников — пресс-релизы, блоги
+    компаний (Apple Newsroom, OpenAI, NVIDIA…). Встроенные YouTube/Vimeo не берём."""
+    out: list[dict] = []
+    for src in article.get("sources") or []:
+        url, name = (src or {}).get("url"), (src or {}).get("name") or ""
+        if not url or len(out) >= limit:
+            continue
+        try:
+            r = requests.get(url, timeout=timeout, headers={"User-Agent": user_agent, "Accept": "text/html"})
+            if r.status_code >= 400 or "html" not in r.headers.get("Content-Type", "html"):
+                continue
+            html_text = r.text[:2_000_000]
+        except requests.RequestException as exc:
+            log.info("Видео из источника %s: %s", url, exc)
+            continue
+        found: list[str] = []
+        # og:video и VideoObject в JSON-LD — главное видео страницы; затем <video>/<source>
+        for m in re.finditer(r'<meta[^>]+(?:property|name)=["\'](?:og:video(?::secure_url|:url)?|twitter:player:stream)["\'][^>]*>', html_text, re.I):
+            c = re.search(r'content=["\']([^"\']+)', m.group(0))
+            if c:
+                found.append(c.group(1))
+        found += re.findall(r'"contentUrl"\s*:\s*"([^"]+)"', html_text)
+        found += re.findall(r'<(?:video|source)[^>]+src=["\']([^"\']+)', html_text, re.I)
+        found += _VIDEO_URL.findall(html_text)
+        seen: set[str] = set()
+        for v in found:
+            v = html.unescape(v.replace("\\/", "/")).strip()
+            if v.startswith("//"):
+                v = "https:" + v
+            elif v.startswith("/"):
+                v = re.match(r"https?://[^/]+", url).group(0) + v
+            if v in seen or not _VIDEO_URL.fullmatch(v.split("#")[0]) or any(x in v.lower() for x in _SKIP_VIDEO):
+                continue
+            seen.add(v)
+            try:  # файл должен реально отдаваться и быть не крошечным (не иконка-анимация)
+                h = requests.head(v, timeout=timeout, allow_redirects=True, headers={"User-Agent": user_agent})
+                size = int(h.headers.get("Content-Length") or 0)
+                if h.status_code >= 400 or (size and (size < 300_000 or size > 150_000_000)):
+                    continue
+            except requests.RequestException:
+                continue
+            out.append({"key": f"src{len(out)}", "url": v, "query": "первоисточник", "desc": f"видео из {name}",
+                        "vertical": False, "page": url, "credit": name or "первоисточник", "source": True})
+            if len(out) >= limit:
+                break
+    return out
+
+
+NASA_API = "https://images-api.nasa.gov"
+
+
+def nasa_candidates(queries: list[str], user_agent: str, per_query: int = 2, timeout: int = 25) -> list[dict]:
+    """Видео NASA (общественное достояние) — для новостей о космосе; уместность решает ИИ."""
+    out: list[dict] = []
+    for q in queries[:4]:
+        try:
+            r = requests.get(f"{NASA_API}/search", timeout=timeout, headers={"User-Agent": user_agent},
+                             params={"q": q, "media_type": "video", "page_size": per_query * 3})
+            r.raise_for_status()
+            items = (r.json().get("collection") or {}).get("items") or []
+        except (requests.RequestException, ValueError) as exc:
+            log.info("NASA «%s»: %s", q, exc)
+            continue
+        n = 0
+        for it in items:
+            d = (it.get("data") or [{}])[0]
+            nid = d.get("nasa_id")
+            if not nid or any(c.get("key") == f"nasa{nid}" for c in out):
+                continue
+            try:
+                assets = requests.get(f"{NASA_API}/asset/{requests.utils.quote(nid)}", timeout=timeout,
+                                      headers={"User-Agent": user_agent}).json()
+                files = [a.get("href") for a in (assets.get("collection") or {}).get("items") or []]
+            except (requests.RequestException, ValueError):
+                continue
+            mp4 = next((f for tag in ("~mobile.mp4", "~medium.mp4", "~small.mp4") for f in files if f and f.endswith(tag)), None)
+            if not mp4:
+                continue
+            out.append({"key": f"nasa{nid}", "url": mp4.replace("http://", "https://"), "query": q,
+                        "desc": f"NASA: {d.get('title', '')} — {', '.join((d.get('keywords') or [])[:6])}",
+                        "vertical": False, "page": f"https://images.nasa.gov/details/{nid}", "credit": "NASA"})
+            n += 1
+            if n >= per_query:
+                break
     return out
 
 
@@ -529,8 +622,13 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     sentences = [re.sub(r"\[[^\]]*\]\s*", "", x) for x in sentences][:len(queries) or 6]
     cands = stock_candidates(queries, cfg.user_agent, (s.get("pexelsApiKey") or "").strip(),
                              (s.get("pixabayApiKey") or "").strip())
-    clips = choose_clips(llm, cfg.writer_model, article.get("title") or "", sentences, cands)
-    log.info("Рилс: кадров-кандидатов %d, выбрано %d", len(cands), len(clips))
+    space = any(w in f"{article.get('title', '')} {' '.join(queries)}".lower()
+                for w in ("nasa", "space", "ғарыш", "spacex", "rocket", "зымыран", "satellite", "спутник", "starlink", "moon", "mars", "марс"))
+    if space:
+        cands += nasa_candidates((script.get("subjects") or []) + queries, cfg.user_agent)
+    own = source_videos(article, cfg.user_agent)  # видео из самой новости — лучшие кадры, идут первыми
+    clips = own + choose_clips(llm, cfg.writer_model, article.get("title") or "", sentences[len(own):] or sentences, cands)
+    log.info("Рилс: видео из источника %d, кандидатов со стоков %d", len(own), len(cands))
     if len(clips) < 3 and script.get("subjects"):
         clips += commons_clips(script["subjects"], cfg.user_agent, want=min(2, 6 - len(clips)))
     job["broll"] = clips[:6]
