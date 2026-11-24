@@ -114,7 +114,7 @@ def test_prepare_returns_job_with_scene_boundaries(db):
     assert text[job["intro_chars"]:].startswith("Эппл компаниясы")
     assert prepare_reel(Config(), db, FakeCMS(settings(enabled=False), [art(5)]), FakeLLM(), el, now=NOW, force=True)["job"]["article_id"] == 5
     assert text[job["outro_char"]:].startswith("Сіз Сири-ді") and text.endswith(SUBSCRIBE)
-    assert text[job["headline_char"]:].startswith("Siri кешіккені")
+    assert text[job["headline_char"]:].startswith("Сири кешіккені")
     assert job["photo_url"] == "https://techtalq.kz/api/media/file/p-hero.jpg"
     assert job["date_label"] == "23 ҚАРАША" and el.calls[0][1] == "JBFqnCBsd6RMkjVDRZzb"
     assert db.social_get(1, REEL)["status"] == "rendering"
