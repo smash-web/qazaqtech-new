@@ -385,8 +385,9 @@ def choose_clips(llm: LLM, model: str, title: str, sentences: list[str], cands: 
     except LLMError as exc:
         log.warning("Рилс: отбор кадров ИИ не удался: %s", exc)
         return []
+    picks = data.get("picks") if isinstance(data, dict) else data if isinstance(data, list) else []
     by_key, used, res = {c["key"]: c for c in cands}, set(), []
-    for k in data.get("picks") or []:
+    for k in picks or []:
         c = by_key.get(str(k)) if k else None
         if c and c["key"] not in used:
             used.add(c["key"])
@@ -489,6 +490,8 @@ def write_script(llm: LLM, model: str, article: dict, tags: bool = False) -> dic
     data = complete_json(llm, model=model, system=SCRIPT_SYSTEM, max_tokens=2000, temperature=0.7,
                          prompt=SCRIPT_PROMPT.format(title=article.get("title", ""), excerpt=article.get("excerpt", ""),
                                                      body=lexical_text(article.get("content"))) + (TAGS_RULE if tags else ""))
+    if isinstance(data, list):  # иногда ИИ оборачивает ответ в список
+        data = next((x for x in data if isinstance(x, dict)), {})
     hook, lead = _clean(data.get("hook", "")), _clean(data.get("lead", ""))
     body, question = _clean(data.get("body", "")), _clean(data.get("question", ""))
     if not hook or not lead or len(body.split()) < 15:
@@ -501,8 +504,9 @@ def write_script(llm: LLM, model: str, article: dict, tags: bool = False) -> dic
         question = question.rstrip(".!") + "?"
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip() and q.strip() != "…"][:6]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
-    say = {str(k).strip(): str(v).strip() for k, v in (data.get("say") or {}).items()
-           if isinstance(data.get("say"), dict) and str(k).strip() and str(v).strip() and re.search(r"[A-Za-z]", str(k))}
+    raw_say = data.get("say") if isinstance(data.get("say"), dict) else {}
+    say = {str(k).strip(): str(v).strip() for k, v in raw_say.items()
+           if str(k).strip() and str(v).strip() and re.search(r"[A-Za-z]", str(k))}
     return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body, "say": say,
             "outro": f"{question} {SUBSCRIBE}".strip(), "broll": broll, "subjects": subjects}
 
@@ -533,6 +537,8 @@ def pick_article(cms: CMSClient, db: Database, settings: dict, now: datetime, ll
         try:
             pick = complete_json(llm, model=model, system="Сен — вирустық контент редакторысың.", max_tokens=300,
                                  temperature=0.2, prompt=PICK_PROMPT.format(items=items))
+            if isinstance(pick, list):
+                pick = next((x for x in pick if isinstance(x, dict)), {})
             chosen = next((a for a in top if str(a["id"]) == str(pick.get("id"))), None)
             if chosen:
                 log.info("Рилс: выбрана статья %s — %s", chosen["id"], pick.get("why"))
