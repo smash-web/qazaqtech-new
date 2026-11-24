@@ -5,7 +5,7 @@ name: reels
 
 on:
   schedule:
-    - cron: "30 5,10,15 * * *"
+    - cron: "17 5,10,15 * * *"  # не ровные :00/:30 — GitHub реже задерживает и пропускает такие запуски
   workflow_dispatch:
     inputs:
       preview:
