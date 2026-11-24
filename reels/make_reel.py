@@ -110,7 +110,7 @@ def main() -> int:
                                  duration=duration, intro_end=intro_end, outro_start=outro_start,
                                  headline_start=headline, ticker=job.get("ticker") or [],
                                  broll=[dict(b, credit=credits[b["src"]]) for b in broll],
-                                 photo_credit=job.get("photo_credit") or "")
+                                 photo_credit=job.get("photo_credit") or "", display_map=job.get("display_map"))
         out = work / f"techtalq-{aid}-{job['slug'][:60]}.mp4"
         render.render_video(reel, audio, out)
         size = out.stat().st_size

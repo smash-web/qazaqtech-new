@@ -111,7 +111,7 @@ def test_prepare_returns_job_with_scene_boundaries(db):
     cms, el = FakeCMS(settings(), [art(1)]), FakeEleven()
     job = prepare_reel(Config(), db, cms, FakeLLM(), el, now=NOW)["job"]
     text = job["text"]
-    assert text[job["intro_chars"]:].startswith("Apple компаниясы")
+    assert text[job["intro_chars"]:].startswith("Эппл компаниясы")
     assert prepare_reel(Config(), db, FakeCMS(settings(enabled=False), [art(5)]), FakeLLM(), el, now=NOW, force=True)["job"]["article_id"] == 5
     assert text[job["outro_char"]:].startswith("Сіз Siri-ді") and text.endswith(SUBSCRIBE)
     assert text[job["headline_char"]:].startswith("Siri кешіккені")
@@ -258,3 +258,12 @@ def test_add_voice_returns_id(monkeypatch):
     monkeypatch.setattr(c.session, "post", fake_post)
     assert c.add_voice("Диктор", b"abc") == "v123"
     assert seen["url"].endswith("/voices/add") and seen["files"][0][0] == "files"
+
+
+def test_speech_numbers_and_brands():
+    from qtnews.speech import for_speech, kk_number
+    assert kk_number(94) == "тоқсан төрт" and kk_number(1919) == "мың тоғыз жүз он тоғыз"
+    spoken, shown = for_speech("ChatGPT деңгейі 77–80%-дан 91–94%-ға өсті, GPT-6.2")
+    assert "сексен пайыздан" in spoken and "тоқсан төрт пайызға" in spoken
+    assert "Чат-Джи-Пи-Ти" in spoken and "алты нүкте екі" in spoken and shown["Чат-Джи-Пи-Ти"] == "ChatGPT"
+    assert "токсан" not in for_speech("токсан")[0]

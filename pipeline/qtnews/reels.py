@@ -22,6 +22,7 @@ from .cms import CMSClient
 from .config import Config
 from .db import Database
 from .llm import LLM, LLMError, complete_json
+from .speech import for_speech
 from .social import InstagramClient, InstagramError, _parse, build_caption
 from .telegram import TelegramClient, TelegramError, article_url, build_post, normalize_channel
 
@@ -41,7 +42,7 @@ SCRIPT_SYSTEM = (
     "асыра сілтеме. ДӘЛДІК: кім кімге не істегенін мақаладағыдай нақты жаз — компанияның әрекетін оның иесіне "
     "немесе басшысына телме, «сотқа берді» мен «сотталды», «жоспарлап отыр» мен «жасады» сияқты ұғымдарды шатастырма. "
     "Сот талабы, айыптау, күдік — дәлелденген факт емес: оларды міндетті түрде иесіне сілтеп жаз "
-    "(«арызға сәйкес», «прокурорлардың айтуынша», «компания айыпталуда»). Хук та осы ережеге бағынады. Сандарды сөзбен, қазақ тілінің дұрыс жазылуымен жаз (сексен, тоқсан төрт, жүз жиырма) және мақаладағы мәнін өзгертпе: аралық болса («77–80 пайыз») — аралықты толық айт, жуықтап немесе бір шегін ғана алма. Сілтеме, эмодзи, хэштег жазба. "
+    "(«арызға сәйкес», «прокурорлардың айтуынша», «компания айыпталуда»). Хук та осы ережеге бағынады. Сандарды ЦИФРМЕН жаз (77–80%, 2026, 1,5 млн емес — 1 500 000), мақаладағы мәнін өзгертпе: аралық болса — аралықты толық бер, жуықтама. Сөзбен жазуды бағдарлама өзі жасайды. Сілтеме, эмодзи, хэштег жазба. "
     "Ағылшын атаулары өз қалпында."
 )
 SCRIPT_PROMPT = """Мақала:
@@ -393,7 +394,14 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         script = write_script(llm, cfg.writer_model, article, tags=bool(s.get("audioTags")))
         gender = "f" if s.get("presenter") == "f" else "m"
         voice = (s.get("voiceId") or "").strip() or DEFAULT_VOICES[gender]
-        text = f"{script['intro']} {script['body']} {script['outro']}"
+        # голосу — числа словами и бренды с произношением; длины частей считаем уже по озвучиваемому тексту
+        hook_s, shown = for_speech(script["hook"])
+        lead_s, m2 = for_speech(script["intro"][len(script["hook"]) + 1:])
+        body_s, m3 = for_speech(script["body"])
+        outro_s, m4 = for_speech(script["outro"])
+        shown.update(m2), shown.update(m3), shown.update(m4)
+        intro_s = f"{hook_s} {lead_s}"
+        text = f"{intro_s} {body_s} {outro_s}"
         eleven = eleven or ElevenLabsClient(key, cfg.user_agent)
         stability = {"creative": 0.0, "natural": 0.5, "robust": 1.0}.get(s.get("voiceStyle") or "natural", 0.5)
         tts = eleven.speak(text, voice, (s.get("model") or "eleven_v3").strip(), stability)
@@ -412,8 +420,9 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         "photo_url": _media_url(article.get("coverImage"), cfg.site_url), "presenter": gender,
         "photo_credit": re.sub(r"^(Сурет|Фото|Photo)\s*:\s*", "", str((article.get("coverImage") or {}).get("credit") or "").split(" — ")[0]).strip()[:80],
         # где в тексте начинаются новость и концовка — по ним сцены переключаются
-        "intro_chars": len(script["intro"]) + 1, "outro_char": len(script["intro"]) + 1 + len(script["body"]) + 1,
-        "headline_char": len(script["hook"]) + 1,  # смена плана — на втором предложении вступления
+        "intro_chars": len(intro_s) + 1, "outro_char": len(intro_s) + 1 + len(body_s) + 1,
+        "headline_char": len(hook_s) + 1,  # смена плана — на втором предложении вступления
+        "display_map": shown,  # «Чат-Джи-Пи-Ти» в субтитрах → «ChatGPT»
         # бегущая строка — другие свежие заголовки
         "ticker": [a.get("title") for a in cms.published_since((now - timedelta(hours=24)).isoformat())
                    if a.get("id") != aid and a.get("title")][-6:][::-1],
