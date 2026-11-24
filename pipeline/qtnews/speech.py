@@ -14,7 +14,7 @@ SCALES = [(1_000_000_000, "миллиард"), (1_000_000, "миллион"), (1
 
 # как произносить (одним словом — чтобы субтитры можно было вернуть к оригиналу)
 BRANDS = {
-    "ChatGPT": "Чат-Джи-Пи-Ти", "OpenAI": "Оупен-Эй-Ай", "GPT": "Джи-Пи-Ти", "xAI": "Икс-Эй-Ай", "GTA": "Джи Ти Эй",
+    "ChatGPT": "Чат Джи-Пи-Ти", "OpenAI": "Оупен-Эй-Ай", "GPT": "Джи-Пи-Ти", "xAI": "Икс-Эй-Ай", "GTA": "Джи Ти Эй",
     "SpaceX": "Спейс-Икс", "Grok": "Грок", "Google": "Гугл", "Gemini": "Джемини", "Apple": "Эппл",
     "iPhone": "Айфон", "iPad": "Айпэд", "MacBook": "Макбук", "Microsoft": "Майкрософт", "Windows": "Уиндоус",
     "Copilot": "Копайлот", "Nvidia": "Энвидиа", "NVIDIA": "Энвидиа", "Meta": "Мета", "WhatsApp": "Уотсап",
@@ -109,7 +109,7 @@ def for_speech(text: str, extra: dict[str, str] | None = None) -> tuple[str, dic
         pattern = rf"(?<![\w-]){re.escape(brand)}(?![\w])"
         if re.search(pattern, text):
             # буквы и части — через неразрывный пробел: голос делает паузу («Джи Ти Эй»), а для субтитров это одно слово
-            spoken = re.sub(r"[\s-]+", NBSP, say[brand].strip())
+            spoken = re.sub(r"\s+", NBSP, say[brand].strip())  # дефисы оставляем — так голос читает буквы слитно и естественно
             text = re.sub(pattern, spoken, text)
             shown[spoken] = brand
     return numbers_to_words(text), shown

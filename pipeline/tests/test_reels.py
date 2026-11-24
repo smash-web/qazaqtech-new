@@ -265,7 +265,7 @@ def test_speech_numbers_and_brands():
     assert kk_number(94) == "тоқсан төрт" and kk_number(1919) == "мың тоғыз жүз он тоғыз"
     spoken, shown = for_speech("ChatGPT деңгейі 77–80%-дан 91–94%-ға өсті, GPT-6.2")
     assert "сексен пайыздан" in spoken and "тоқсан төрт пайызға" in spoken
-    assert "Чат\u00a0Джи\u00a0Пи\u00a0Ти" in spoken and "алты нүкте екі" in spoken and shown["Чат\u00a0Джи\u00a0Пи\u00a0Ти"] == "ChatGPT"
+    assert "Чат\u00a0Джи-Пи-Ти" in spoken and "алты нүкте екі" in spoken and shown["Чат\u00a0Джи-Пи-Ти"] == "ChatGPT"
     assert for_speech("GTA VI ойыны")[1] == {"Джи\u00a0Ти\u00a0Эй\u00a0алты": "GTA VI"}
     assert "токсан" not in for_speech("токсан")[0]
 
