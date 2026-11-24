@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import html
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -56,6 +57,21 @@ class TelegramClient:
             params = data.get("parameters") or {}
             raise TelegramError(str(data.get("description") or "unknown error"), data.get("error_code"),
                                 params.get("retry_after"))
+        return data["result"]
+
+    def send_video_file(self, chat_id: str, video_url: str, **payload: Any) -> dict:
+        """sendVideo загрузкой файла: по ссылке GitHub (редирект на подписанный адрес) Telegram видео не скачивает."""
+        try:
+            video = requests.get(video_url, timeout=120).content
+            fields = {k: (json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list, bool)) else str(v))
+                      for k, v in {"chat_id": chat_id, **payload}.items()}
+            resp = self.session.post(f"{self.base}/sendVideo", data=fields, timeout=max(self.timeout, 180),
+                                     files={"video": ("reel.mp4", video, "video/mp4")})
+            data = resp.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise TelegramError(f"Telegram недоступен: {exc}") from exc
+        if not data.get("ok"):
+            raise TelegramError(str(data.get("description") or "unknown error"), data.get("error_code"))
         return data["result"]
 
     def get_chat(self, chat_id: str) -> dict:

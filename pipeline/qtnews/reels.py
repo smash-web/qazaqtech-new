@@ -463,7 +463,7 @@ def _tg_reel(cfg: Config, s: dict, article: dict, video_url: str, client: Telegr
         raise TelegramError("Telegram не подключён")
     client = client or TelegramClient(token, cfg.user_agent, timeout=120)
     url = article_url(article, cfg.site_url)
-    msg = client._call("sendVideo", chat_id=channel, video=video_url, caption=build_post(article, cfg.site_url),
+    msg = client.send_video_file(channel, video_url, caption=build_post(article, cfg.site_url),
                        parse_mode="HTML", supports_streaming=True, width=1080, height=1920,
                        reply_markup={"inline_keyboard": [[{"text": "Толық оқу →", "url": url}]]})
     mid = str(msg.get("message_id") or "")
@@ -505,10 +505,11 @@ def _review_reel(cfg: Config, s: dict, article: dict, video_url: str, teaser: st
     if not token or not chat:
         raise TelegramError("не задан чат для рилсов или бот Telegram")
     client = client or TelegramClient(token, cfg.user_agent, timeout=120)
-    msg = client._call("sendVideo", chat_id=chat, video=video_url, supports_streaming=True, width=1080, height=1920,
+    msg = client.send_video_file(chat, video_url, supports_streaming=True, width=1080, height=1920,
                        caption=f"🎬 Рилс для Instagram\n{(article.get('title') or '')[:900]}")
-    client._call("sendMessage", chat_id=chat, text=review_caption(article, cfg.site_url, teaser, s.get("_hashtags") or ""),
-                 disable_web_page_preview=True)
+    if not s.get("_skipCaption"):
+        client._call("sendMessage", chat_id=chat, text=review_caption(article, cfg.site_url, teaser, s.get("_hashtags") or ""),
+                     disable_web_page_preview=True)
     return str(msg.get("message_id") or "")
 
 
@@ -531,7 +532,8 @@ def publish_reel(cfg: Config, db: Database, cms: CMSClient, payload: dict, ig: I
     video_url = payload["video_url"]
     s = cms.reels_settings()
     article = cms.article(aid)
-    db.social_save(aid, REEL, "posted", media_id=video_url)
+    if not payload.get("review_only"):
+        db.social_save(aid, REEL, "posted", media_id=video_url)
     result: dict[str, Any] = {"article": aid, "video": video_url}
     errors: list[str] = []
     targets = [("instagram", s.get("publishInstagram", True), lambda: _ig_reel(cfg, cms.instagram_settings(), article, video_url, ig)),
@@ -539,8 +541,11 @@ def publish_reel(cfg: Config, db: Database, cms: CMSClient, payload: dict, ig: I
                ("tiktok", s.get("publishTikTok", False), lambda: _tt_reel(cfg, cms.tiktok_settings(), article, video_url)),
                ("review", bool((s.get("reviewChatId") or "").strip()),
                 lambda: _review_reel(cfg, {**s, "_botToken": cms.telegram_settings().get("botToken"),
-                                           "_hashtags": cms.instagram_settings().get("hashtags")},
+                                           "_hashtags": cms.instagram_settings().get("hashtags"),
+                                           "_skipCaption": bool(payload.get("skip_caption"))},
                                      article, video_url, str(payload.get("teaser") or ""), tg))]
+    if payload.get("review_only"):  # повторно прислать рилс себе, без публикации в сети
+        targets = [t for t in targets if t[0] == "review"]
     for name, on, fn in targets:
         if not on:
             continue
