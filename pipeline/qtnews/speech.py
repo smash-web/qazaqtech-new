@@ -77,7 +77,7 @@ def _roman(tok: str) -> int | None:
 
 # --- казахская грамматика: порядковые числительные и падежные окончания -------------------------------
 BACK, FRONT = set("аоұы"), set("әөүіеиэ")
-VOICELESS = set("кқпстфхцчшщ")
+VOICELESS = set("кқпстфхцчшщбвгд")  # б/в/г/д на конце (заимствования) звучат глухо: миллиардтан, заводқа
 SONOR_MNN = set("мнң")
 
 
@@ -172,18 +172,25 @@ def expand_abbr(text: str) -> str:
 MONTHS = "қаңтар|ақпан|наурыз|сәуір|мамыр|маусым|шілде|тамыз|қыркүйек|қазан|қараша|желтоқсан"
 
 
+def _n(tok: str) -> int:
+    return int(tok.replace(" ", ""))
+
+
 def ordinals(text: str) -> str:
+    num = r"\d{1,3}(?: \d{3})+|\d+"
     # 2030-ыншы, 41-інші, 5-ші → порядковое
-    text = re.sub(r"(?<![\w.,])(\d+)\s*-?\s*(?:ыншы|інші|ншы|нші|шы|ші)(?![\w])", lambda m: kk_ordinal(int(m[1])), text)
+    text = re.sub(rf"(?<![\w.,])({num})\s*-?\s*(?:ыншы|інші|ншы|нші|шы|ші)(?![\w])", lambda m: kk_ordinal(_n(m[1])), text)
     # годы и даты: «2030 жылға» → «екі мың отызыншы жылға», «24 қараша» → «жиырма төртінші қараша»
-    text = re.sub(rf"(?<![\w.,])(\d{{1,4}})(\s+)(?=жыл|{MONTHS})", lambda m: kk_ordinal(int(m[1])) + m[2], text, flags=re.I)
+    # (только календарный год 1900–2099: «5 жыл бұрын» — это количество, «бес жыл»)
+    text = re.sub(r"(?<![\w.,])((?:19|20)\d\d)(\s+)(?=жыл)", lambda m: kk_ordinal(int(m[1])) + m[2], text, flags=re.I)
+    text = re.sub(rf"(?<![\w.,])([1-9]|[12]\d|3[01])(\s+)(?={MONTHS})", lambda m: kk_ordinal(int(m[1])) + m[2], text, flags=re.I)
     # «1-орын», «3-сынып»: число через дефис со словом — порядковое; с падежным окончанием — количественное
     def hyphen(m: re.Match) -> str:
-        n, word = int(m[1]), m[2]
+        n, word = _n(m[1]), m[2]
         if word.lower() in CASES or word.lower() in ("сы", "сі", "ы", "і"):
             return _with_suffix(kk_number(n), word)
         return f"{kk_ordinal(n)} {word}"
-    return re.sub(r"(?<![\w.,])(\d+)-([а-яәіңғүұқөһё]+)", hyphen, text, flags=re.I)
+    return re.sub(rf"(?<![\w.,])({num})-([а-яәіңғүұқөһё]+)", hyphen, text, flags=re.I)
 
 
 def numbers_to_words(text: str) -> str:
