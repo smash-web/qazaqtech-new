@@ -425,7 +425,8 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         # где в тексте начинаются новость и концовка — по ним сцены переключаются
         "intro_chars": len(intro_s) + 1, "outro_char": len(intro_s) + 1 + len(body_s) + 1,
         "headline_char": len(hook_s) + 1,  # смена плана — на втором предложении вступления
-        "display_map": shown,  # «Чат-Джи-Пи-Ти» в субтитрах → «ChatGPT»
+        "display_map": shown,
+        "show_presenter": bool(s.get("showPresenter")),  # выкл — без диктора, видео с первой секунды  # «Чат-Джи-Пи-Ти» в субтитрах → «ChatGPT»
         # бегущая строка — другие свежие заголовки
         "ticker": [a.get("title") for a in cms.published_since((now - timedelta(hours=24)).isoformat())
                    if a.get("id") != aid and a.get("title")][-6:][::-1],

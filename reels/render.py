@@ -220,15 +220,19 @@ def broll_frames(clips: list[Path], out_dir: Path, seconds: float = 18, fps: int
 def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo: Path, alignment: dict,
                duration: float, intro_end: float, outro_start: float, headline_start: float | None = None,
                ticker: list[str] | None = None, broll: list[dict] | None = None, photo_credit: str = "",
-               gender: str = "m", display_map: dict | None = None) -> dict:
+               gender: str = "m", display_map: dict | None = None, presenter: bool = True) -> dict:
     chars, st, en = alignment["characters"], alignment["character_start_times_seconds"], alignment["character_end_times_seconds"]
     chars = strip_tags(chars)
     all_words = words(chars, st, en)
+    if not presenter and headline_start:
+        intro_end = headline_start
     news_words = [w for w in all_words if w.start >= intro_end - 0.05]  # субтитры с новости до конца (и вопрос в концовке)
     if display_map:  # в субтитрах — оригинальное написание брендов («Чат-Джи-Пи-Ти» → «ChatGPT»)
         for spoken in sorted(display_map, key=len, reverse=True):
             news_words = [Word(w.text.replace(spoken, display_map[spoken]), w.start, w.end) for w in news_words]
     shots = plan_shots(intro_end, outro_start, duration, headline_start, sentence_starts(chars, st))
+    if not presenter:  # как у новостных пабликов: видео с первой секунды, хук крупно, субтитры после хука
+        shots = [{"type": "news", "start": 0, "end": round(duration + 1, 3)}]
     return {
         "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
         "photo": data_url(photo), "photoCredit": photo_credit, "hostImage": data_url(HERE / "assets" / "host.jpg"),
@@ -236,7 +240,7 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
         "visemes": visemes(chars, st, en), "phrases": phrases(news_words, max_words=9, max_chars=52),
         "blinks": blinks(duration), "shots": shots,
         "cuts": plan_cuts(shots, len(broll or []), sentence_starts(chars, st)),
-        "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration},
+        "timeline": {"introEnd": intro_end, "outroStart": outro_start, "end": duration}, "noHost": not presenter,
     }
 
 

@@ -20,6 +20,7 @@ export const ReelsSettings: GlobalConfig = {
       type: 'row',
       fields: [
         { name: 'enabled', label: 'Делать рилсы', type: 'checkbox', defaultValue: false },
+        { name: 'showPresenter', label: 'Анимированный диктор во вступлении', type: 'checkbox', defaultValue: false },
         { name: 'perDay', label: 'Рилсов в сутки', type: 'number', defaultValue: 3, min: 1, max: 3 },
         { name: 'lookbackHours', label: 'Брать новости за последние, часов', type: 'number', defaultValue: 12, min: 2, max: 48 },
       ],

@@ -165,9 +165,10 @@ function render(t) {
   for (const c of R.cuts) { const d = t - c.start; if (d >= 0 && d < .08 && !c.first) flash = Math.max(flash, .18 * (1 - d / .08)); }
   $('wipe').style.left = wipe < 0 ? '-3000px' : (-1700 + wipe * 3400) + 'px';
   $('flash').style.opacity = flash;
-  const hk = ease((t - .5) / .5) * (1 - ease((t - T.introEnd - 3.1) / .5));
+  const hin = R.noHost ? ease(t / .15) : ease((t - .5) / .5);
+  const hk = hin * (1 - ease((t - T.introEnd - 3.1) / .5));
   $('hook').className = studio ? '' : 'over';
-  $('hook').style.opacity = hk; $('hook').style.transform = `translateY(${(1 - ease((t - .5) / .5)) * 60}px)`;
+  $('hook').style.opacity = hk; $('hook').style.transform = `translateY(${(1 - hin) * 60}px)`;
   const o = ease((t - T.end + 2.6) / .4); $('outro').style.opacity = o; $('outro').querySelector('.cta').style.transform = `scale(${.85 + .15 * back((t - T.end + 2.6) / .5)})`;
   const tw = Math.max(1, $('tickText').scrollWidth), run = 1000 - (t * 150) % (tw + 1000);
   $('tickText').style.left = run + 'px';
