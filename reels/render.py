@@ -93,7 +93,7 @@ def words(chars: list[str], starts: list[float], ends: list[float]) -> list[Word
     res: list[Word] = []
     cur, ws, we = "", None, None
     for ch, s, e in zip(chars, starts, ends):
-        if ch.isspace():
+        if ch.isspace() and ch != "\u00a0":  # неразрывный пробел — внутри названия («Джи Ти Эй»)
             if cur:
                 res.append(Word(cur, ws, we))
             cur, ws = "", None
@@ -204,7 +204,7 @@ def broll_frames(clips: list[Path], out_dir: Path, seconds: float = 18, fps: int
             # кадр по ширине ×1.4 (видно ~70% сюжета) — полоса выше, но без сильного увеличения
             fw = int(W * 1.4) // 2 * 2
             fh = int(fw * vh / vw) // 2 * 2
-            top = max(260, (H - fh) // 2 - 120)
+            top = max(0, (H - fh) // 2)  # по центру кадра
             vf = (f"split[a][b];[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:3,"
                   f"eq=brightness=-0.18[bg];[b]scale={fw}:{fh},crop={W}:{fh}[fg];[bg][fg]overlay=0:{top},fps={fps}")
         else:

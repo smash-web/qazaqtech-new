@@ -22,7 +22,7 @@ from .cms import CMSClient
 from .config import Config
 from .db import Database
 from .llm import LLM, LLMError, complete_json
-from .speech import for_speech
+from .speech import for_speech, parse_dictionary
 from .social import InstagramClient, InstagramError, _parse, build_caption
 from .telegram import TelegramClient, TelegramError, article_url, build_post, normalize_channel
 
@@ -57,7 +57,7 @@ SCRIPT_PROMPT = """Мақала:
   "body": "неге маңызды: мәні, қарапайым адамға, Қазақстанға не өзгереді, қызықты деталь; 3–4 қысқа сөйлем, 40–65 сөз",
   "question": "пікір жазуға шақыратын даулы немесе жеке сұрақ (6–12 сөз)",
   "subjects": ["нақты нысандар ағылшынша: компания, өнім, қала (1–3 атау, адам аты емес)"],
-  "say": {{"мәтіндегі әр латын әріпті атау": "оның дауыстап айтылуы кириллицамен, бір сөз, бөліктері дефиспен (мысалы: \"GTA VI\": \"Джи-Ти-Эй-Сикс\", \"The Verge\": \"Зе-Вердж\", \"Rockstar\": \"Рокстар\")"}},
+  "say": {{"мәтіндегі ӘРБІР латын әріпті атау": "дауыстап айтылуы кириллицамен: аббревиатура әріптеп, бос орынмен; атаудағы сан немесе рим цифры — ҚАЗАҚША сөзбен (мысалы: \"GTA VI\": \"Джи Ти Эй алты\", \"iPhone 17\": \"Айфон он жеті\", \"The Witness\": \"Зе Уитнес\", \"Dear Esther\": \"Дир Эстер\", \"Rockstar Games\": \"Рокстар Геймс\")"}},
   "broll": ["5 сұрау ағылшынша, мәтіндегі сөйлемдердің ретімен — әр сөйлемге бір кадр, 2–4 сөз", "…", "…", "…", "…"]
 }}
 subjects — бейнемұрағаттан нақты кадр іздеуге (мысалы: "Nvidia", "Stuttgart", "iPhone 17").
@@ -214,6 +214,93 @@ def pixabay_clips(api_key: str, queries: list[str], user_agent: str, want: int =
     return clips
 
 
+# --- подбор кадров по смыслу ---------------------------------------------------------------------------
+def stock_candidates(queries: list[str], user_agent: str, pexels_key: str = "", pixabay_key: str = "",
+                     per_query: int = 4, timeout: int = 25) -> list[dict]:
+    """Кандидаты со стоков с описанием (теги Pixabay, название ролика Pexels) — дальше их отбирает ИИ."""
+    out: list[dict] = []
+    seen: set[str] = set()
+    for q in queries:
+        if pexels_key:
+            try:
+                r = requests.get(PEXELS, timeout=timeout, headers={"Authorization": pexels_key, "User-Agent": user_agent},
+                                 params={"query": q, "orientation": "portrait", "size": "medium", "per_page": per_query})
+                r.raise_for_status()
+                for v in r.json().get("videos") or []:
+                    files = [f for f in v.get("video_files") or [] if f.get("file_type") == "video/mp4"
+                             and (f.get("height") or 0) > (f.get("width") or 0) and 1000 <= (f.get("height") or 0) <= 2600]
+                    key = f"px{v.get('id')}"
+                    if not files or key in seen or (v.get("duration") or 0) < 4:
+                        continue
+                    f = min(files, key=lambda f: abs((f.get("height") or 0) - 1920))
+                    slug = re.sub(r"-\d+/?$", "", str(v.get("url") or "").rstrip("/").rsplit("/", 1)[-1]).replace("-", " ")
+                    seen.add(key)
+                    out.append({"key": key, "url": f["link"], "query": q, "desc": slug, "vertical": True,
+                                "duration": v.get("duration"), "page": v.get("url"),
+                                "credit": f"{(v.get('user') or {}).get('name') or 'автор'} / Pexels"})
+            except (requests.RequestException, ValueError) as exc:
+                log.warning("Pexels «%s»: %s", q, exc)
+        if pixabay_key:
+            try:
+                r = requests.get(PIXABAY, timeout=timeout, headers={"User-Agent": user_agent},
+                                 params={"key": pixabay_key, "q": q[:100], "per_page": 10, "safesearch": "true"})
+                r.raise_for_status()
+                n = 0
+                for h in r.json().get("hits") or []:
+                    key = f"pb{h.get('id')}"
+                    vids = h.get("videos") or {}
+                    files = [v for v in (vids.get(k) for k in ("large", "medium")) if v and v.get("url")]
+                    if not files or key in seen or (h.get("duration") or 0) < 4:
+                        continue
+                    f = max(files, key=lambda v: ((v.get("height") or 0) > (v.get("width") or 0), v.get("height") or 0))
+                    if (f.get("height") or 0) < 720:
+                        continue
+                    seen.add(key)
+                    out.append({"key": key, "url": f["url"], "query": q, "desc": str(h.get("tags") or ""),
+                                "vertical": (f.get("height") or 0) > (f.get("width") or 0), "duration": h.get("duration"),
+                                "page": h.get("pageURL"), "credit": f"{h.get('user') or 'автор'} / Pixabay"})
+                    n += 1
+                    if n >= per_query:
+                        break
+            except (requests.RequestException, ValueError) as exc:
+                log.warning("Pixabay «%s»: %s", q, str(exc).replace(pixabay_key, "***"))
+    return out
+
+
+CLIP_PROMPT = """Рилс-новость: «{title}».
+Предложения диктора (по порядку) и что нужно показать:
+{sentences}
+
+Кандидаты — стоковые видео (id: описание/теги{vert}):
+{cands}
+
+Для каждого предложения выбери ОДИН ролик, который по смыслу подходит к теме новости и к этому предложению.
+Строго: не бери кадры, не связанные с темой (природа, еда, животные и т.п. в IT-новости), и никогда — курение,
+алкоголь, оружие, кровь, обнажёнку. Лучше null, чем случайный кадр. Вертикальные (V) предпочтительнее.
+Один ролик — не больше одного раза.
+JSON: {{"picks": [id или null для каждого предложения по порядку]}}"""
+
+
+def choose_clips(llm: LLM, model: str, title: str, sentences: list[str], cands: list[dict]) -> list[dict]:
+    if not cands:
+        return []
+    lines = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(sentences))
+    cl = "\n".join(f"{c['key']}: {c['desc'][:120]}{' (V)' if c.get('vertical') else ''}" for c in cands)
+    try:
+        data = complete_json(llm, model=model, system="Ты — бильд-редактор новостных рилсов.", max_tokens=600,
+                             temperature=0.1, prompt=CLIP_PROMPT.format(title=title, sentences=lines, cands=cl, vert="; V — вертикальный"))
+    except LLMError as exc:
+        log.warning("Рилс: отбор кадров ИИ не удался: %s", exc)
+        return []
+    by_key, used, res = {c["key"]: c for c in cands}, set(), []
+    for k in data.get("picks") or []:
+        c = by_key.get(str(k)) if k else None
+        if c and c["key"] not in used:
+            used.add(c["key"])
+            res.append(c)
+    return res
+
+
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 
 
@@ -321,7 +408,7 @@ def write_script(llm: LLM, model: str, article: dict, tags: bool = False) -> dic
         question = question.rstrip(".!") + "?"
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip() and q.strip() != "…"][:6]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
-    say = {str(k).strip(): re.sub(r"\s+", "-", str(v).strip()) for k, v in (data.get("say") or {}).items()
+    say = {str(k).strip(): str(v).strip() for k, v in (data.get("say") or {}).items()
            if isinstance(data.get("say"), dict) and str(k).strip() and str(v).strip() and re.search(r"[A-Za-z]", str(k))}
     return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body, "say": say,
             "outro": f"{question} {SUBSCRIBE}".strip(), "broll": broll, "subjects": subjects}
@@ -398,6 +485,8 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         gender = "f" if s.get("presenter") == "f" else "m"
         voice = (s.get("voiceId") or "").strip() or DEFAULT_VOICES[gender]
         # голосу — числа словами и бренды с произношением; длины частей считаем уже по озвучиваемому тексту
+        say = {**(script.get("say") or {}), **parse_dictionary(s.get("pronunciations") or "")}
+        script["say"] = say
         hook_s, shown = for_speech(script["hook"], script.get("say"))
         lead_s, m2 = for_speech(script["intro"][len(script["hook"]) + 1:], script.get("say"))
         body_s, m3 = for_speech(script["body"], script.get("say"))
@@ -436,15 +525,13 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
     # видео: как в новостных рилсах — вертикальные стоковые кадры по одному на предложение. Pexels (больше всего
     # вертикальных) → Pixabay → Commons (точные названия, но обычно горизонтально)
     queries = script.get("broll") or []
-    clips: list[dict] = []
-    pex = (s.get("pexelsApiKey") or "").strip()
-    if pex:
-        clips += pexels_clips(pex, queries, cfg.user_agent, want=6)
-    pix = (s.get("pixabayApiKey") or "").strip()
-    if pix and len(clips) < 6:
-        clips += pixabay_clips(pix, [q for q in queries if q not in {c["query"] for c in clips}], cfg.user_agent,
-                               want=6 - len(clips))
-    if len(clips) < 6 and script.get("subjects"):
+    sentences = [x for x in re.split(r"(?<=[.!?…])\s+", f"{script['intro']} {script['body']}") if x.strip()]
+    sentences = [re.sub(r"\[[^\]]*\]\s*", "", x) for x in sentences][:len(queries) or 6]
+    cands = stock_candidates(queries, cfg.user_agent, (s.get("pexelsApiKey") or "").strip(),
+                             (s.get("pixabayApiKey") or "").strip())
+    clips = choose_clips(llm, cfg.writer_model, article.get("title") or "", sentences, cands)
+    log.info("Рилс: кадров-кандидатов %d, выбрано %d", len(cands), len(clips))
+    if len(clips) < 3 and script.get("subjects"):
         clips += commons_clips(script["subjects"], cfg.user_agent, want=min(2, 6 - len(clips)))
     job["broll"] = clips[:6]
     db.log_run("reel_prepare", {"article": aid, "chars": len(text), "broll": len(job.get("broll") or [])})

@@ -14,7 +14,7 @@ SCALES = [(1_000_000_000, "миллиард"), (1_000_000, "миллион"), (1
 
 # как произносить (одним словом — чтобы субтитры можно было вернуть к оригиналу)
 BRANDS = {
-    "ChatGPT": "Чат-Джи-Пи-Ти", "OpenAI": "Оупен-Эй-Ай", "GPT": "Джи-Пи-Ти", "xAI": "Икс-Эй-Ай",
+    "ChatGPT": "Чат-Джи-Пи-Ти", "OpenAI": "Оупен-Эй-Ай", "GPT": "Джи-Пи-Ти", "xAI": "Икс-Эй-Ай", "GTA": "Джи Ти Эй",
     "SpaceX": "Спейс-Икс", "Grok": "Грок", "Google": "Гугл", "Gemini": "Джемини", "Apple": "Эппл",
     "iPhone": "Айфон", "iPad": "Айпэд", "MacBook": "Макбук", "Microsoft": "Майкрософт", "Windows": "Уиндоус",
     "Copilot": "Копайлот", "Nvidia": "Энвидиа", "NVIDIA": "Энвидиа", "Meta": "Мета", "WhatsApp": "Уотсап",
@@ -58,10 +58,27 @@ def _num(tok: str) -> str:
     return kk_number(int(tok))
 
 
+NBSP = "\u00a0"
 NUM = r"\d{1,3}(?: \d{3})+|\d+(?:[.,]\d+)?"
 
 
+ROMAN = {"I": 1, "V": 5, "X": 10}
+
+
+def _roman(tok: str) -> int | None:
+    if not re.fullmatch(r"X{0,3}(IX|IV|V?I{0,3})", tok) or not tok:
+        return None
+    total = 0
+    for i, ch in enumerate(tok):
+        v = ROMAN[ch]
+        total += -v if i + 1 < len(tok) and ROMAN[tok[i + 1]] > v else v
+    return total
+
+
 def numbers_to_words(text: str) -> str:
+    # римские цифры после названия (GTA VI, Civilization VII) — по-казахски
+    text = re.sub(r"(?<=\w[\s\u00a0])([IVX]{2,5})(?![\w])",
+                  lambda m: kk_number(_roman(m[1])) if _roman(m[1]) else m[1], text)
     # диапазон с процентом: 77–80% → жетпіс жеті – сексен пайыз
     # суффикс после процента пишется слитно: 80%-дан → сексен пайыздан
     text = re.sub(rf"({NUM})\s*[–—-]\s*({NUM})\s*%(?:-(\w+))?",
@@ -80,14 +97,32 @@ def for_speech(text: str, extra: dict[str, str] | None = None) -> tuple[str, dic
     extra — произношение остальных латинских названий от ИИ (наш словарь BRANDS важнее)."""
     for wrong, right in SPELLING.items():
         text = text.replace(wrong, right)
-    say = {**(extra or {}), **BRANDS}
+    say = {**BRANDS, **(extra or {})}  # extra: словарь из админки и подсказки ИИ (админка важнее всего)
+    # «GTA VI» целиком — одним названием, чтобы и в субтитрах осталось «GTA VI»
+    for name, rom in re.findall(r"(?<![\w-])([A-Z][\w]*) ([IVX]{2,5})(?![\w])", text):
+        full = f"{name} {rom}"
+        if full not in say and _roman(rom):
+            say[full] = f"{say.get(name, name)} {kk_number(_roman(rom))}"
     shown: dict[str, str] = {}
     for brand in sorted(say, key=len, reverse=True):
         pattern = rf"(?<![\w-]){re.escape(brand)}(?![\w])"
         if re.search(pattern, text):
-            text = re.sub(pattern, say[brand], text)
-            shown[say[brand]] = brand
+            # буквы и части — через неразрывный пробел: голос делает паузу («Джи Ти Эй»), а для субтитров это одно слово
+            spoken = re.sub(r"[\s-]+", NBSP, say[brand].strip())
+            text = re.sub(pattern, spoken, text)
+            shown[spoken] = brand
     return numbers_to_words(text), shown
+
+
+def parse_dictionary(text: str) -> dict[str, str]:
+    """Словарь произношения из админки: строки «GTA VI = Джи Ти Эй алты»."""
+    out: dict[str, str] = {}
+    for line in (text or "").splitlines():
+        if "=" in line:
+            k, v = (x.strip() for x in line.split("=", 1))
+            if k and v:
+                out[k] = v
+    return out
 
 
 def to_display(word: str, shown: dict[str, str]) -> str:

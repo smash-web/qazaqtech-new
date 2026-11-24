@@ -35,12 +35,13 @@
   .live { display: flex; align-items: center; gap: 10px; background: rgba(5,12,30,.55); padding: 9px 18px; border-radius: 999px; font-size: 24px; font-weight: 800; letter-spacing: 1.5px; }
   .live i { width: 12px; height: 12px; border-radius: 50%; background: #FF3B3B; display: block; box-shadow: 0 0 12px #FF3B3B; }
   /* Субтитры как в рилсах: 2–3 слова, слово «выпрыгивает», текущее — жёлтым */
-  #caps { position: absolute; left: 70px; right: 70px; top: 1290px; display: flex; justify-content: center; text-align: center; }
+  #caps { position: absolute; left: 70px; right: 70px; top: 1420px; display: flex; justify-content: center; text-align: center; }
   #caps p { margin: 0; max-width: 900px; font-size: 44px; line-height: 1.28; font-weight: 600; color: #fff;
     background: rgba(5,12,30,.68); padding: 14px 24px; border-radius: 14px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
   /* Хук в начале: тема новости */
   #hook { position: absolute; left: 56px; right: 56px; top: 1250px; }
   #hook.over { top: 880px; }
+  #hook.top { top: 380px; }
   #hook .tag { display: inline-block; background: #FFC72C; color: #0B1B3A; font-weight: 900; font-size: 30px; letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; transform: rotate(-2deg); }
   #hook .t { margin-top: 18px; font-size: 56px; font-weight: 900; line-height: 1.05; letter-spacing: -1.2px; text-transform: uppercase;
     -webkit-text-stroke: 10px #0B1B3A; paint-order: stroke fill; }
@@ -167,7 +168,7 @@ function render(t) {
   $('flash').style.opacity = flash;
   const hin = R.noHost ? ease(t / .15) : ease((t - .5) / .5);
   const hk = hin * (1 - ease((t - T.introEnd - 3.1) / .5));
-  $('hook').className = studio ? '' : 'over';
+  $('hook').className = studio ? '' : (R.noHost ? 'top' : 'over');
   $('hook').style.opacity = hk; $('hook').style.transform = `translateY(${(1 - hin) * 60}px)`;
   const o = ease((t - T.end + 2.6) / .4); $('outro').style.opacity = o; $('outro').querySelector('.cta').style.transform = `scale(${.85 + .15 * back((t - T.end + 2.6) / .5)})`;
   const tw = Math.max(1, $('tickText').scrollWidth), run = 1000 - (t * 150) % (tw + 1000);

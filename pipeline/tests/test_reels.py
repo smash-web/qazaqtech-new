@@ -265,5 +265,19 @@ def test_speech_numbers_and_brands():
     assert kk_number(94) == "тоқсан төрт" and kk_number(1919) == "мың тоғыз жүз он тоғыз"
     spoken, shown = for_speech("ChatGPT деңгейі 77–80%-дан 91–94%-ға өсті, GPT-6.2")
     assert "сексен пайыздан" in spoken and "тоқсан төрт пайызға" in spoken
-    assert "Чат-Джи-Пи-Ти" in spoken and "алты нүкте екі" in spoken and shown["Чат-Джи-Пи-Ти"] == "ChatGPT"
+    assert "Чат\u00a0Джи\u00a0Пи\u00a0Ти" in spoken and "алты нүкте екі" in spoken and shown["Чат\u00a0Джи\u00a0Пи\u00a0Ти"] == "ChatGPT"
+    assert for_speech("GTA VI ойыны")[1] == {"Джи\u00a0Ти\u00a0Эй\u00a0алты": "GTA VI"}
     assert "токсан" not in for_speech("токсан")[0]
+
+
+def test_choose_clips_skips_unrelated():
+    from qtnews.reels import choose_clips
+
+    class L:
+        def complete(self, **kw):
+            assert "pb2: cigarette" in kw["prompt"]
+            return '{"picks": ["pb1", null, "pb1"]}'
+    cands = [{"key": "pb1", "desc": "gamer controller", "url": "u1", "vertical": True},
+             {"key": "pb2", "desc": "cigarette smoke", "url": "u2"}]
+    got = choose_clips(L(), "m", "GTA VI", ["a", "b", "c"], cands)
+    assert [c["key"] for c in got] == ["pb1"]

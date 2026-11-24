@@ -85,6 +85,10 @@ export const ReelsSettings: GlobalConfig = {
       ],
     },
     {
+      name: 'pronunciations', label: 'Словарь произношения', type: 'textarea',
+      admin: { description: 'Каждая строка: «как написано = как произносить». Например: GTA VI = Джи Ти Эй алты. Главнее подсказок ИИ.' },
+    },
+    {
       name: 'reviewChatId', label: 'Присылать готовые рилсы в Telegram-чат (ID)', type: 'text',
       admin: { description: 'Видео и готовый текст подписи для ручной публикации в Instagram. Бот — тот же, что в настройках Telegram.' },
     },
