@@ -75,16 +75,18 @@ def numbers_to_words(text: str) -> str:
     return text
 
 
-def for_speech(text: str) -> tuple[str, dict[str, str]]:
-    """Текст для голоса и карта «как произносится» → «как писать в субтитрах»."""
+def for_speech(text: str, extra: dict[str, str] | None = None) -> tuple[str, dict[str, str]]:
+    """Текст для голоса и карта «как произносится» → «как писать в субтитрах».
+    extra — произношение остальных латинских названий от ИИ (наш словарь BRANDS важнее)."""
     for wrong, right in SPELLING.items():
         text = text.replace(wrong, right)
+    say = {**(extra or {}), **BRANDS}
     shown: dict[str, str] = {}
-    for brand in sorted(BRANDS, key=len, reverse=True):
+    for brand in sorted(say, key=len, reverse=True):
         pattern = rf"(?<![\w-]){re.escape(brand)}(?![\w])"
         if re.search(pattern, text):
-            text = re.sub(pattern, BRANDS[brand], text)
-            shown[BRANDS[brand]] = brand
+            text = re.sub(pattern, say[brand], text)
+            shown[say[brand]] = brand
     return numbers_to_words(text), shown
 
 

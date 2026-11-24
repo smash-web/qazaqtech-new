@@ -57,6 +57,7 @@ SCRIPT_PROMPT = """Мақала:
   "body": "неге маңызды: мәні, қарапайым адамға, Қазақстанға не өзгереді, қызықты деталь; 3–4 қысқа сөйлем, 40–65 сөз",
   "question": "пікір жазуға шақыратын даулы немесе жеке сұрақ (6–12 сөз)",
   "subjects": ["нақты нысандар ағылшынша: компания, өнім, қала (1–3 атау, адам аты емес)"],
+  "say": {{"мәтіндегі әр латын әріпті атау": "оның дауыстап айтылуы кириллицамен, бір сөз, бөліктері дефиспен (мысалы: \"GTA VI\": \"Джи-Ти-Эй-Сикс\", \"The Verge\": \"Зе-Вердж\", \"Rockstar\": \"Рокстар\")"}},
   "broll": ["5 сұрау ағылшынша, мәтіндегі сөйлемдердің ретімен — әр сөйлемге бір кадр, 2–4 сөз", "…", "…", "…", "…"]
 }}
 subjects — бейнемұрағаттан нақты кадр іздеуге (мысалы: "Nvidia", "Stuttgart", "iPhone 17").
@@ -320,7 +321,9 @@ def write_script(llm: LLM, model: str, article: dict, tags: bool = False) -> dic
         question = question.rstrip(".!") + "?"
     broll = [_clean(q)[:60] for q in (data.get("broll") or []) if isinstance(q, str) and q.strip() and q.strip() != "…"][:6]
     subjects = [_clean(q)[:60] for q in (data.get("subjects") or []) if isinstance(q, str) and q.strip()][:3]
-    return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body,
+    say = {str(k).strip(): re.sub(r"\s+", "-", str(v).strip()) for k, v in (data.get("say") or {}).items()
+           if isinstance(data.get("say"), dict) and str(k).strip() and str(v).strip() and re.search(r"[A-Za-z]", str(k))}
+    return {"teaser": teaser, "hook": hook, "intro": f"{hook} {lead}", "body": body, "say": say,
             "outro": f"{question} {SUBSCRIBE}".strip(), "broll": broll, "subjects": subjects}
 
 
@@ -395,10 +398,10 @@ def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, ele
         gender = "f" if s.get("presenter") == "f" else "m"
         voice = (s.get("voiceId") or "").strip() or DEFAULT_VOICES[gender]
         # голосу — числа словами и бренды с произношением; длины частей считаем уже по озвучиваемому тексту
-        hook_s, shown = for_speech(script["hook"])
-        lead_s, m2 = for_speech(script["intro"][len(script["hook"]) + 1:])
-        body_s, m3 = for_speech(script["body"])
-        outro_s, m4 = for_speech(script["outro"])
+        hook_s, shown = for_speech(script["hook"], script.get("say"))
+        lead_s, m2 = for_speech(script["intro"][len(script["hook"]) + 1:], script.get("say"))
+        body_s, m3 = for_speech(script["body"], script.get("say"))
+        outro_s, m4 = for_speech(script["outro"], script.get("say"))
         shown.update(m2), shown.update(m3), shown.update(m4)
         intro_s = f"{hook_s} {lead_s}"
         text = f"{intro_s} {body_s} {outro_s}"
