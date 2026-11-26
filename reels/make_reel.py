@@ -71,7 +71,7 @@ PREVIEW = os.environ.get("PREVIEW", "").lower() in ("1", "true", "yes")
 
 
 def main() -> int:
-    prep = call("reel_prepare", {"force": True} if PREVIEW else {})
+    prep = call("reel_prepare", {"force": True} if PREVIEW else {"event": os.environ.get("GITHUB_EVENT_NAME", "")})
     job = prep.get("job")
     if not job:
         print("Рилс не нужен:", {k: v for k, v in prep.items() if k != "seconds"})

@@ -25,7 +25,7 @@ from qtnews.main import backfill_covers, build_with_cfg, collect, make_images, p
 from qtnews.social import post_to_instagram  # noqa: E402
 from qtnews.tiktok import post_to_tiktok  # noqa: E402
 from qtnews.telegram import post_to_telegram  # noqa: E402
-from qtnews.reels import clone_voice, prepare_reel, publish_reel  # noqa: E402
+from qtnews.reels import clone_voice, kick_reel, prepare_reel, publish_reel  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
@@ -103,9 +103,12 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 — имя требует V
             if step == "telegram":
                 result["telegram"] = post_to_telegram(cfg, db, cms)
             if step == "reel_prepare":
-                result.update(prepare_reel(cfg, db, cms, llm, force=bool(payload.get("force"))))
+                result.update(prepare_reel(cfg, db, cms, llm, force=bool(payload.get("force")),
+                                           event=str(payload.get("event") or "")))
             if step == "reel_publish":
                 result.update(publish_reel(cfg, db, cms, payload))
+            if step == "reel_kick":
+                result.update(kick_reel(cfg, cms))
             if step == "reel_voice":
                 result.update(clone_voice(cfg, cms, payload))
             result["seconds"] = round(time.time() - started, 1)

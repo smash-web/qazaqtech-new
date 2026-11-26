@@ -85,11 +85,15 @@ export const ReelsSettings: GlobalConfig = {
       ],
     },
     {
+      name: 'githubToken', label: 'GitHub токен (запуск по расписанию)', type: 'text',
+      admin: { description: 'Fine-grained токен с правом Actions: Read and write на репозиторий qazaqtech-new. Нужен, чтобы рилсы запускались вовремя.' },
+    },
+    {
       name: 'pronunciations', label: 'Словарь произношения', type: 'textarea',
       admin: { description: 'Каждая строка: «как написано = как произносить». Например: GTA VI = Джи Ти Эй алты. Главнее подсказок ИИ.' },
     },
     {
-      name: 'reviewChatId', label: 'Присылать готовые рилсы в Telegram-чат (ID)', type: 'text',
+      name: 'reviewChatId', label: 'Присылать готовые рилсы в Telegram (ID через запятую)', type: 'text',
       admin: { description: 'Видео и готовый текст подписи для ручной публикации в Instagram. Бот — тот же, что в настройках Telegram.' },
     },
     // Статус — заполняет конвейер

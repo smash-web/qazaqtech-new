@@ -600,10 +600,12 @@ KZ_MONTHS = ["ҚАҢТАР", "АҚПАН", "НАУРЫЗ", "СӘУІР", "МАМ
 
 
 def prepare_reel(cfg: Config, db: Database, cms: CMSClient, llm: LLM | None, eleven: ElevenLabsClient | None = None,
-                 now: datetime | None = None, force: bool = False) -> dict:
+                 now: datetime | None = None, force: bool = False, event: str = "") -> dict:
     """force — ручной запуск (предпросмотр): без проверки «Делать рилсы» и дневного лимита."""
     now = now or datetime.now(timezone.utc)
     s = cms.reels_settings()
+    if event == "schedule" and (s.get("githubToken") or "").strip():
+        return {"skip": "schedule handled by db cron"}  # запускает pg_cron через reel_kick — без дублей
     if not s.get("enabled") and not force:
         return {"skip": "disabled"}
     key = (s.get("elevenlabsApiKey") or "").strip()
@@ -746,16 +748,47 @@ def review_caption(article: dict, site_url: str, teaser: str = "", hashtags: str
 
 def _review_reel(cfg: Config, s: dict, article: dict, video_url: str, teaser: str, client: TelegramClient | None) -> str:
     """Присылает готовый рилс и текст подписи в личный чат — для ручной публикации в Instagram."""
-    token, chat = (s.get("_botToken") or "").strip(), (s.get("reviewChatId") or "").strip()
-    if not token or not chat:
+    token = (s.get("_botToken") or "").strip()
+    chats = [c for c in re.split(r"[\s,;]+", s.get("reviewChatId") or "") if c]
+    if not token or not chats:
         raise TelegramError("не задан чат для рилсов или бот Telegram")
     client = client or TelegramClient(token, cfg.user_agent, timeout=120)
-    msg = client.send_video_file(chat, video_url, supports_streaming=True, width=1080, height=1920,
-                       caption=f"🎬 Рилс для Instagram\n{(article.get('title') or '')[:900]}")
-    if not s.get("_skipCaption"):
-        client._call("sendMessage", chat_id=chat, text=review_caption(article, cfg.site_url, teaser, s.get("_hashtags") or ""),
-                     disable_web_page_preview=True)
-    return str(msg.get("message_id") or "")
+    sent, errors = [], []
+    for chat in chats:  # несколько получателей: ID через запятую
+        try:
+            msg = client.send_video_file(chat, video_url, supports_streaming=True, width=1080, height=1920,
+                                         caption=f"🎬 Рилс для Instagram\n{(article.get('title') or '')[:900]}")
+            if not s.get("_skipCaption"):
+                client._call("sendMessage", chat_id=chat, text=review_caption(article, cfg.site_url, teaser, s.get("_hashtags") or ""),
+                             disable_web_page_preview=True)
+            sent.append(f"{chat}:{msg.get('message_id')}")
+        except TelegramError as exc:
+            errors.append(f"{chat}: {exc}")
+    if not sent:
+        raise TelegramError("; ".join(errors))
+    if errors:
+        log.warning("Рилс: не всем доставлено: %s", "; ".join(errors))
+    return ",".join(sent)
+
+
+GH_DISPATCH = "https://api.github.com/repos/smash-web/qazaqtech-new/actions/workflows/reels.yml/dispatches"
+
+
+def kick_reel(cfg: Config, cms: CMSClient) -> dict:
+    """Запуск сборки рилса по расписанию из базы (pg_cron): расписание GitHub ненадёжно, пропускает запуски."""
+    s = cms.reels_settings()
+    if not s.get("enabled"):
+        return {"skip": "disabled"}
+    token = (s.get("githubToken") or "").strip()
+    if not token:
+        return {"skip": "no github token"}
+    r = requests.post(GH_DISPATCH, timeout=20, json={"ref": "main", "inputs": {"preview": False}},
+                      headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+                               "User-Agent": cfg.user_agent})
+    if r.status_code >= 300:
+        cms.update_reels_settings({"lastError": f"GitHub {r.status_code}: {r.text[:200]}"})
+        return {"error": f"github {r.status_code}"}
+    return {"dispatched": True}
 
 
 def publish_reel(cfg: Config, db: Database, cms: CMSClient, payload: dict, ig: InstagramClient | None = None,

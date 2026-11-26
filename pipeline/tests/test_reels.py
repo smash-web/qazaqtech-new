@@ -328,3 +328,22 @@ def test_choose_clips_fallback_when_ai_down(monkeypatch):
              {"key": "b", "desc": "server room", "query": "q1", "url": "2"},
              {"key": "c", "desc": "laptop", "query": "q2", "url": "3"}]
     assert [c["key"] for c in R.choose_clips(L(), "m", "t", ["x"], cands)] == ["b", "c"]
+
+
+def test_review_reel_sends_to_every_chat():
+    from qtnews.reels import _review_reel
+
+    class TG:
+        def __init__(self):
+            self.to = []
+        def send_video_file(self, chat, url, **kw):
+            self.to.append(chat)
+            return {"message_id": 5}
+        def _call(self, method, **kw):
+            return {}
+
+    class Cfg:
+        site_url, user_agent = "https://techtalq.kz", "ua"
+    tg = TG()
+    out = _review_reel(Cfg(), {"_botToken": "t", "reviewChatId": "111, 222"}, {"title": "T", "slug": "s"}, "v.mp4", "", tg)
+    assert tg.to == ["111", "222"] and out == "111:5,222:5"
