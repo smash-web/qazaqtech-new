@@ -5,6 +5,7 @@ import { MobileMenu } from './MobileMenu'
 import { SearchBox } from './SearchBox'
 import { NavLinks } from './NavLinks'
 import { Logo } from './Logo'
+import { ThemeToggle } from './ThemeToggle'
 import { SocialLinks } from './SocialLinks'
 
 export async function Header() {
@@ -36,6 +37,7 @@ export async function Header() {
         </Link>
         <span className="header__tagline">{SITE.tagline}</span>
         <SearchBox />
+        <ThemeToggle />
       </div>
 
       <nav className="nav-wrap" aria-label="Айдарлар">

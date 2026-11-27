@@ -32,7 +32,11 @@ export const metadata: Metadata = {
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="kk" className={`${inter.variable} ${grotesk.variable}`}>
+    <html lang="kk" className={`${inter.variable} ${grotesk.variable}`} suppressHydrationWarning>
+      <head>
+        {/* тема до отрисовки — без мигания светлой страницы */}
+        <script dangerouslySetInnerHTML={{ __html: "try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}" }} />
+      </head>
       <body>
         <Header />
         <main className="container main">{children}</main>

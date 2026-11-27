@@ -21,11 +21,38 @@
   --font: var(--font-inter), 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --font-display: var(--font-grotesk), 'Space Grotesk', var(--font-inter), 'Inter', system-ui, sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Тёмная тема: по выбору на сайте (data-theme) или, если не выбрано, по системе */
+:root[data-theme="dark"] {
     --bg: #081329; --bg-soft: #0F2147; --fg: #F5F7FA; --muted: #9FB0CC; --line: #1C2F57;
     --accent: var(--sky); --accent-soft: #0C2F4A; --label-bg: var(--sky); --label-fg: var(--ink); --dark: #050D1F;
   }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #081329; --bg-soft: #0F2147; --fg: #F5F7FA; --muted: #9FB0CC; --line: #1C2F57;
+    --accent: var(--sky); --accent-soft: #0C2F4A; --label-bg: var(--sky); --label-fg: var(--ink); --dark: #050D1F;
+  }
+}
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+/* логотип: две версии, показываем подходящую теме */
+.logo__img--dark { display: none !important; }
+:root[data-theme="dark"] .logo__img--light { display: none !important; }
+:root[data-theme="dark"] .logo__img--dark { display: block !important; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo__img--light { display: none !important; }
+  :root:not([data-theme="light"]) .logo__img--dark { display: block !important; }
+}
+/* переключатель темы */
+.theme-toggle { flex: none; display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-soft); color: var(--fg); cursor: pointer; padding: 0; }
+.theme-toggle:hover { border-color: var(--sky); color: var(--sky); }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .i-sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .i-sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .i-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .i-sun { display: block; }
+  :root:not([data-theme="light"]) .theme-toggle .i-moon { display: none; }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -225,6 +252,7 @@ a.tag:hover { background: var(--deep); color: #fff; }
   .header__tagline, .header__main .search { display: none; }
   .burger { display: flex; }
   .header__main { gap: 10px; }
+  .theme-toggle { margin-left: auto; width: 36px; height: 36px; }
   .drawer { top: 0; }
   .nav-wrap { display: none; }
   .top, .grid, .panels { grid-template-columns: 1fr; }

@@ -1,6 +1,6 @@
 /**
  * Логотип TechTalQ (файлы из брендбука в /public/brand).
- * theme="auto" — светлая версия на светлой теме и белая на тёмной (по системной теме, как и весь сайт);
+ * theme="auto" — светлая версия на светлой теме и белая на тёмной (тема — переключатель на сайте или система);
  * theme="dark" — всегда белая версия (подвал на тёмном фоне).
  */
 const W = 444
@@ -11,10 +11,11 @@ export function Logo({ height = 36, theme = 'auto' }: { height?: number; theme?:
   if (theme === 'dark') {
     return <img className="logo__img" src="/brand/logo-dark.png" alt="TechTalQ" width={width} height={height} />
   }
+  // обе версии в разметке, нужную показывает CSS по теме (выбранной на сайте или системной)
   return (
-    <picture>
-      <source srcSet="/brand/logo-dark.png" media="(prefers-color-scheme: dark)" />
-      <img className="logo__img" src="/brand/logo-light.png" alt="TechTalQ" width={width} height={height} />
-    </picture>
+    <>
+      <img className="logo__img logo__img--light" src="/brand/logo-light.png" alt="TechTalQ" width={width} height={height} />
+      <img className="logo__img logo__img--dark" src="/brand/logo-dark.png" alt="" aria-hidden="true" width={width} height={height} />
+    </>
   )
 }
