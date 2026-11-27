@@ -3,7 +3,16 @@ import { ArticleCard } from '@/components/ArticleCard'
 import { Pagination } from '@/components/Pagination'
 import { latestArticles } from '@/lib/cms'
 
-export const metadata: Metadata = { title: 'Барлық жаңалықтар', alternates: { canonical: '/zhanalyq' } }
+type SP = { searchParams: Promise<{ page?: string }> }
+
+export async function generateMetadata({ searchParams }: SP): Promise<Metadata> {
+  const page = Math.max(1, Number((await searchParams).page) || 1)
+  return {
+    title: page > 1 ? `Барлық жаңалықтар — ${page}-бет` : 'Барлық жаңалықтар',
+    description: 'TechTalQ: IT, жасанды интеллект, гаджеттер және стартаптар туралы соңғы жаңалықтар қазақ тілінде.',
+    alternates: { canonical: page > 1 ? `/zhanalyq?page=${page}` : '/zhanalyq' },
+  }
+}
 
 export default async function Archive({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const page = Math.max(1, Number((await searchParams).page) || 1)

@@ -19,7 +19,15 @@ export const metadata: Metadata = {
   title: { default: `${SITE.name} — ${SITE.tagline}`, template: `%s — ${SITE.name}` },
   description: 'Жасанды интеллект, IT-компаниялар, стартаптар, киберқауіпсіздік және гаджеттер туралы күнделікті жаңалықтар қазақ тілінде.',
   alternates: { canonical: '/', types: { 'application/rss+xml': '/rss.xml' } },
-  openGraph: { siteName: SITE.name, locale: SITE.locale, type: 'website' },
+  openGraph: { siteName: SITE.name, locale: SITE.locale, type: 'website', images: ['/ig-static/avatar.jpg'] },
+  twitter: { card: 'summary_large_image' },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
+  keywords: ['IT жаңалықтары', 'технология жаңалықтары', 'жасанды интеллект', 'қазақша жаңалықтар', 'гаджеттер', 'киберқауіпсіздік', 'стартаптар'],
+  // коды подтверждения из Google Search Console и Яндекс.Вебмастера (переменные окружения Vercel)
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    yandex: process.env.YANDEX_VERIFICATION || undefined,
+  },
 }
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {

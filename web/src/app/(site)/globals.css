@@ -243,3 +243,6 @@ a.tag:hover { background: var(--deep); color: #fff; }
 
 /* бургер поверх открытого меню и превращается в крестик */
 .burger { position: relative; z-index: 60; }
+
+/* скрытый заголовок для поисковиков и экранных дикторов */
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

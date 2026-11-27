@@ -6,9 +6,15 @@ import { categoryBySlug, latestArticles } from '@/lib/cms'
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const cat = await categoryBySlug((await params).slug)
-  return cat ? { title: cat.name, description: cat.description || undefined, alternates: { canonical: `/sanat/${cat.slug}` } } : {}
+  if (!cat) return {}
+  const page = Math.max(1, Number((await searchParams).page) || 1)
+  return {
+    title: page > 1 ? `${cat.name} — ${page}-бет` : `${cat.name} жаңалықтары`,
+    description: cat.description || `${cat.name}: соңғы жаңалықтар қазақ тілінде — TechTalQ.`,
+    alternates: { canonical: page > 1 ? `/sanat/${cat.slug}?page=${page}` : `/sanat/${cat.slug}` },
+  }
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {

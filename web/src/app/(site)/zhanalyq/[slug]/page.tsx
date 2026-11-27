@@ -11,6 +11,7 @@ import { readingMinutes } from '@/lib/text'
 import { Views } from '@/components/Views'
 import { coverOf } from '@/lib/cover'
 import { asCategory } from '@/lib/types'
+import { breadcrumbsLd, ldJson, LOGO_URL } from '@/lib/seo'
 
 
 type Props = { params: Promise<{ slug: string }> }
@@ -24,10 +25,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: a.meta?.title || a.title,
     description,
     alternates: { canonical: `/zhanalyq/${a.slug}` },
+    keywords: a.tags?.map((t) => t.tag),
     openGraph: {
       type: 'article', title: a.title, description, publishedTime: a.publishedAt || undefined,
+      modifiedTime: a.updatedAt || undefined, section: asCategory(a.category)?.name, tags: a.tags?.map((t) => t.tag),
       images: [{ url: og.src, width: 1200, height: og.generated ? 675 : 630, alt: a.title }],
     },
+    twitter: { card: 'summary_large_image', title: a.title, description, images: [og.src] },
   }
 }
 
@@ -53,14 +57,24 @@ export default async function ArticlePage({ params }: Props) {
     dateModified: article.updatedAt,
     mainEntityOfPage: `${SITE.url}/zhanalyq/${article.slug}`,
     image: [new URL(cover.src, SITE.url).toString()],
-    publisher: { '@type': 'Organization', name: SITE.name },
+    author: { '@type': 'Organization', name: `${SITE.name} редакциясы`, url: SITE.url },
+    publisher: { '@type': 'NewsMediaOrganization', name: SITE.name, url: SITE.url, logo: { '@type': 'ImageObject', url: LOGO_URL } },
+    articleSection: cat?.name,
+    keywords: article.tags?.map((t) => t.tag).join(', ') || undefined,
+    isAccessibleForFree: true,
     isBasedOn: article.sources?.map((s) => s.url),
   }
+  const crumbs = breadcrumbsLd([
+    { name: 'Басты бет', url: SITE.url },
+    ...(cat ? [{ name: cat.name, url: `${SITE.url}/sanat/${cat.slug}` }] : [{ name: 'Жаңалықтар', url: `${SITE.url}/zhanalyq` }]),
+    { name: article.title, url },
+  ])
 
   return (
     <div className="article-layout">
       <article className="article">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(crumbs) }} />
         <nav className="breadcrumbs" aria-label="Навигация">
           <Link href="/">Басты бет</Link>
           <span aria-hidden="true">›</span>

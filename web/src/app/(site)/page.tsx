@@ -1,13 +1,17 @@
 import Link from 'next/link'
+import { SITE } from '@/lib/site'
 import { ArticleCard } from '@/components/ArticleCard'
 import { SourcesPanel, SubscribePanel, TagsPanel } from '@/components/Panels'
-import { categories, latestArticles } from '@/lib/cms'
+import { categories, latestArticles, siteSettings } from '@/lib/cms'
+import { ldJson, siteLd } from '@/lib/seo'
 
 export default async function Home() {
-  const [{ docs }, cats] = await Promise.all([latestArticles({ limit: 25 }), categories()])
+  const [{ docs }, cats, settings] = await Promise.all([latestArticles({ limit: 25 }), categories(), siteSettings()])
+  const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: ldJson(siteLd(settings?.social)) }} />
   if (!docs.length) {
     return (
       <>
+        {ld}
         <p className="empty">Жаңалықтар жақында жарияланады.</p>
         <div className="panels"><SubscribePanel /><SourcesPanel /></div>
       </>
@@ -27,6 +31,8 @@ export default async function Home() {
 
   return (
     <>
+      {ld}
+      <h1 className="visually-hidden">{SITE.name} — IT және технология жаңалықтары қазақ тілінде</h1>
       <section className="top">
         <ArticleCard article={hero} variant="hero" />
         {!!side.length && (
