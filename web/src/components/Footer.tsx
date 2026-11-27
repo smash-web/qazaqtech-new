@@ -12,7 +12,7 @@ export async function Footer() {
       <div className="container footer__grid">
         <div className="footer__brand">
           <Link href="/" className="logo logo--footer">
-            <Logo />
+            <Logo theme="dark" height={34} />
           </Link>
           <p>{settings?.about || SITE.tagline}</p>
           <SocialLinks social={settings?.social} className="footer__social" />

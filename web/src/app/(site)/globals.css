@@ -54,6 +54,8 @@ img { max-width: 100%; display: block; }
 .logo { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1; letter-spacing: -0.02em; color: var(--fg); }
 .logo:hover { color: var(--fg); }
 .logo__mark { flex: none; display: block; }
+.logo__img { display: block; height: 36px; width: auto; max-width: none; }
+.logo--footer .logo__img { height: 34px; }
 .logo__accent { color: var(--sky); }
 .header__tagline { color: var(--muted); font-size: 14px; flex: 1; padding-left: 14px; border-left: 1px solid var(--line); }
 .search input { border: 1px solid var(--line); background: var(--bg-soft); color: var(--fg); border-radius: 999px; padding: 9px 16px; width: 240px; font: inherit; font-size: 14px; }
@@ -230,6 +232,7 @@ a.tag:hover { background: var(--deep); color: #fff; }
   .grid { gap: 26px; }
   .card--hero .card__title { font-size: 26px; }
   .logo { font-size: 23px; }
+  .logo__img { height: 30px; }
   .article__title { font-size: 29px; }
   .article__lead { font-size: 18px; }
   .prose { font-size: 17px; }

@@ -1,7 +1,7 @@
 import { SITE } from './site'
 
 /** Логотип издания для Google (NewsArticle.publisher.logo): квадрат, растровый */
-export const LOGO_URL = `${SITE.url}/ig-static/avatar.jpg`
+export const LOGO_URL = `${SITE.url}/brand/publisher-logo.png`
 
 type Social = Record<string, string | null | undefined> | null | undefined
 
@@ -15,7 +15,7 @@ export function organizationLd(social: Social) {
     '@id': `${SITE.url}/#org`,
     name: SITE.name,
     url: SITE.url,
-    logo: { '@type': 'ImageObject', url: LOGO_URL, width: 1080, height: 1080 },
+    logo: { '@type': 'ImageObject', url: LOGO_URL, width: 600, height: 600 },
     sameAs: sameAs(social),
   }
 }

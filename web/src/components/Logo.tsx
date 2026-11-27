@@ -1,22 +1,20 @@
 /**
- * Логотип TechTalQ по брендбуку: знак «Q» (кольцо + точка-сигнал + золотая диагональ) и словесная часть.
- * Кольцо красится в currentColor: Ink на светлом фоне, белый — на тёмном. Sky и Gold не меняются.
+ * Логотип TechTalQ (файлы из брендбука в /public/brand).
+ * theme="auto" — светлая версия на светлой теме и белая на тёмной (по системной теме, как и весь сайт);
+ * theme="dark" — всегда белая версия (подвал на тёмном фоне).
  */
-export function LogoMark({ size = 34 }: { size?: number }) {
-  return (
-    <svg className="logo__mark" width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <circle cx="27" cy="27" r="20" stroke="currentColor" strokeWidth="9" />
-      <circle cx="27" cy="27" r="4.2" fill="#00AFCA" />
-      <path d="M39.5 39.5l15 15" stroke="#FFC72C" strokeWidth="8" strokeLinecap="round" />
-    </svg>
-  )
-}
+const W = 444
+const H = 120
 
-export function Logo({ size = 34 }: { size?: number }) {
+export function Logo({ height = 36, theme = 'auto' }: { height?: number; theme?: 'auto' | 'dark' }) {
+  const width = Math.round((W / H) * height)
+  if (theme === 'dark') {
+    return <img className="logo__img" src="/brand/logo-dark.png" alt="TechTalQ" width={width} height={height} />
+  }
   return (
-    <>
-      <LogoMark size={size} />
-      <span className="logo__text">TechTal<span className="logo__accent">Q</span></span>
-    </>
+    <picture>
+      <source srcSet="/brand/logo-dark.png" media="(prefers-color-scheme: dark)" />
+      <img className="logo__img" src="/brand/logo-light.png" alt="TechTalQ" width={width} height={height} />
+    </picture>
   )
 }
