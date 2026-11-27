@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 import sharp from 'sharp'
 import { articleBySlug } from '@/lib/cms'
-import { COVER_THEME } from '@/lib/cover'
+import { brandLogo, COVER_THEME, LOGO_RATIO } from '@/lib/cover'
 import { loadFont } from '@/lib/ogFonts'
 import { SITE } from '@/lib/site'
 import { asCategory, asMedia } from '@/lib/types'
@@ -60,6 +60,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   if (!article) return new Response('Not found', { status: 404 })
 
   const { ink, sky } = COVER_THEME
+  const logoSrc = await brandLogo(SITE.url)
   const img = asMedia(article.coverImage)
   const photo = await photoDataUrl(img?.url || img?.sizes?.hero?.url, H)
   const raw = article.title.length > 140 ? `${article.title.slice(0, 137)}…` : article.title
@@ -101,21 +102,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
 
         {/* логотип в левом верхнем углу */}
         <div style={{ position: 'absolute', top: story ? 210 : 60, left: PAD, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <svg width="38" height="38" viewBox="0 0 64 64" fill="none">
-            <circle cx="27" cy="27" r="20" stroke="#fff" strokeWidth="9" />
-            <circle cx="27" cy="27" r="4.2" fill={sky} />
-            <path d="M39.5 39.5l15 15" stroke={COVER_THEME.gold} strokeWidth="8" strokeLinecap="round" />
-          </svg>
-          <div style={{ fontFamily: 'Space Grotesk', fontSize: 34, fontWeight: 700, display: 'flex' }}>
-            <span>TechTal</span><span style={{ color: sky, marginLeft: -8 }}>Q</span>{/* рендерер даёт лишний зазор после «l» */}
-          </div>
+          {logoSrc ? <img src={logoSrc} width={Math.round(LOGO_RATIO * 46)} height={46} alt="" /> : <div style={{ fontFamily: 'Space Grotesk', fontSize: 36, fontWeight: 700, display: 'flex' }}>TechTalQ</div>}
         </div>
 
         {/* рубрика, заголовок, линия и подпись */}
         <div style={{ position: 'absolute', left: PAD, right: PAD, bottom: story ? 300 : 56, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex' }}>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2.5, padding: '9px 16px', borderRadius: 8,
-              backgroundColor: sky, color: ink, display: 'flex' }}>
+              backgroundColor: sky, color: '#fff', display: 'flex' }}>
               {label}
             </div>
           </div>
@@ -126,13 +120,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', marginTop: 34, gap: 18 }}>
-            <div style={{ width: 64, height: 6, borderRadius: 3, backgroundColor: COVER_THEME.gold, display: 'flex' }} />
+            <div style={{ width: 64, height: 6, borderRadius: 3, backgroundColor: COVER_THEME.sky, display: 'flex' }} />
             <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.22)', display: 'flex' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, fontSize: 23, fontWeight: 500,
             color: 'rgba(255,255,255,0.6)' }}>
             <div style={{ display: 'flex' }}>{creditLine}</div>
-            <div style={{ display: 'flex', color: story ? COVER_THEME.gold : undefined }}>{footer}</div>
+            <div style={{ display: 'flex', color: story ? COVER_THEME.sky : undefined }}>{footer}</div>
           </div>
         </div>
       </div>

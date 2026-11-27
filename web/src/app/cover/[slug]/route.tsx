@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { articleBySlug } from '@/lib/cms'
-import { COVER_THEME } from '@/lib/cover'
+import { brandLogo, COVER_THEME, LOGO_RATIO } from '@/lib/cover'
 import { loadFont } from '@/lib/ogFonts'
 import { SITE } from '@/lib/site'
 import { asCategory } from '@/lib/types'
@@ -22,7 +22,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   if (!article) return new Response('Not found', { status: 404 })
 
   const cat = asCategory(article.category)
-  const { ink, sky, gold } = COVER_THEME
+  const { ink, sky } = COVER_THEME
+  const logoSrc = await brandLogo(SITE.url)
   const title = article.title.length > 140 ? `${article.title.slice(0, 137)}…` : article.title
   const sources = Array.from(new Set((article.sources || []).map((s) => s.name))).slice(0, 3).join(' · ')
   const label = (cat?.name || 'Технология').toUpperCase()
@@ -53,16 +54,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
           backgroundColor: sky, display: 'flex' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-          <svg width="52" height="52" viewBox="0 0 64 64" fill="none">
-            <circle cx="27" cy="27" r="20" stroke="#fff" strokeWidth="9" />
-            <circle cx="27" cy="27" r="4.2" fill={sky} />
-            <path d="M39.5 39.5l15 15" stroke={gold} strokeWidth="8" strokeLinecap="round" />
-          </svg>
-          <div style={{ fontFamily: 'Space Grotesk', fontSize: 40, fontWeight: 700, display: 'flex' }}>
-            <span>TechTal</span><span style={{ color: sky, marginLeft: -10 }}>Q</span>{/* рендерер даёт лишний зазор после «l» */}
-          </div>
+          {logoSrc ? <img src={logoSrc} width={Math.round(LOGO_RATIO * 50)} height={50} alt="" /> : <div style={{ fontFamily: 'Space Grotesk', fontSize: 40, fontWeight: 700, display: 'flex' }}>TechTalQ</div>}
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2.5, padding: '9px 16px', borderRadius: 8,
-            backgroundColor: sky, color: ink, display: 'flex', marginLeft: 8 }}>
+            backgroundColor: sky, color: '#fff', display: 'flex', marginLeft: 8 }}>
             {label}
           </div>
         </div>
@@ -77,7 +71,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
           <div style={{ display: 'flex' }}>{sources}</div>
           <div style={{ display: 'flex' }}>{host}</div>
         </div>
-        <div style={{ position: 'absolute', left: 72, bottom: 0, width: 120, height: 10, backgroundColor: gold,
+        <div style={{ position: 'absolute', left: 72, bottom: 0, width: 120, height: 10, backgroundColor: sky,
           display: 'flex' }} />
       </div>
     ),

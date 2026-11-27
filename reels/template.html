@@ -26,12 +26,13 @@
   #credit b { display: inline-block; font-weight: 800; letter-spacing: 1.2px; color: #fff; background: rgba(0,175,202,.9); padding: 3px 8px; border-radius: 5px; margin-bottom: 4px; }
   /* Диктор в круге */
   #pip { position: absolute; left: 48px; top: 1250px; width: 330px; height: 330px; border-radius: 50%; overflow: hidden;
-    background: #0B1B3A; border: 8px solid #00AFCA; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
+    background: #0B1B3A; border: 8px solid #1881FF; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
   #pip .hostbox { transform: translate(-215px, -390px) scale(.84); }
   /* Шапка */
   #top { position: absolute; left: 56px; right: 56px; top: 190px; display: flex; align-items: center; justify-content: space-between; }
   .logo { display: flex; align-items: center; gap: 12px; font-size: 38px; font-weight: 800; letter-spacing: -.5px; text-shadow: 0 2px 12px rgba(0,0,0,.5); }
-  .logo b { color: #00AFCA; }
+  .logo img { height: 60px; width: auto; display: block; filter: drop-shadow(0 2px 10px rgba(0,0,0,.5)); }
+  #outro .mark img { height: 120px; width: auto; display: block; }
   .live { display: flex; align-items: center; gap: 10px; background: rgba(5,12,30,.55); padding: 9px 18px; border-radius: 999px; font-size: 24px; font-weight: 800; letter-spacing: 1.5px; }
   .live i { width: 12px; height: 12px; border-radius: 50%; background: #FF3B3B; display: block; box-shadow: 0 0 12px #FF3B3B; }
   /* Субтитры как в рилсах: 2–3 слова, слово «выпрыгивает», текущее — жёлтым */
@@ -42,23 +43,23 @@
   #hook { position: absolute; left: 56px; right: 56px; top: 1250px; }
   #hook.over { top: 880px; }
   #hook.top { top: 380px; }
-  #hook .tag { display: inline-block; background: #FFC72C; color: #0B1B3A; font-weight: 900; font-size: 30px; letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; transform: rotate(-2deg); }
+  #hook .tag { display: inline-block; background: #1881FF; color: #fff; font-weight: 900; font-size: 30px; letter-spacing: 2px; padding: 10px 18px; border-radius: 10px; transform: rotate(-2deg); }
   #hook .t { margin-top: 18px; font-size: 56px; font-weight: 900; line-height: 1.05; letter-spacing: -1.2px; text-transform: uppercase;
     -webkit-text-stroke: 10px #0B1B3A; paint-order: stroke fill; }
   /* Бегущая строка */
   #ticker { position: absolute; left: 0; right: 0; top: 1640px; height: 70px; display: flex; background: rgba(5,12,30,.92); overflow: hidden; }
-  #ticker .lbl { flex: 0 0 auto; background: #00AFCA; color: #0B1B3A; font-weight: 900; font-size: 26px; letter-spacing: 2px; padding: 0 20px; display: flex; align-items: center; z-index: 1; }
+  #ticker .lbl { flex: 0 0 auto; background: #1881FF; color: #0B1B3A; font-weight: 900; font-size: 26px; letter-spacing: 2px; padding: 0 20px; display: flex; align-items: center; z-index: 1; }
   #ticker .run { position: relative; flex: 1; overflow: hidden; }
   #ticker .run div { position: absolute; top: 0; height: 70px; display: flex; align-items: center; white-space: nowrap; font-size: 28px; font-weight: 600; color: #DCE7F5; }
-  #ticker .run b { color: #FFC72C; margin: 0 20px; }
+  #ticker .run b { color: #1881FF; margin: 0 20px; }
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
-  #wipe { position: absolute; top: 0; bottom: 0; width: 1400px; left: -3000px; background: #00AFCA; transform: skewX(-12deg); }
-  #wipe::after { content: ''; position: absolute; top: 0; bottom: 0; right: -90px; width: 90px; background: #FFC72C; }
+  #wipe { position: absolute; top: 0; bottom: 0; width: 1400px; left: -3000px; background: #1881FF; transform: skewX(-12deg); }
+  #wipe::after { content: ''; position: absolute; top: 0; bottom: 0; right: -90px; width: 90px; background: #1881FF; }
   #outro { display: flex; align-items: center; justify-content: center; background: rgba(5,12,30,.72); backdrop-filter: blur(14px); }
   #outro .cta { display: flex; flex-direction: column; align-items: center; gap: 22px; }
   #outro .mark { display: flex; align-items: center; gap: 18px; font-size: 76px; font-weight: 800; letter-spacing: -1px; }
-  #outro .mark b { color: #00AFCA; }
-  #outro .site { background: #FFC72C; color: #0B1B3A; font-size: 64px; font-weight: 900; padding: 14px 30px; border-radius: 18px; transform: rotate(-2deg); }
+  #outro .mark b { color: #1881FF; }
+  #outro .site { background: #1881FF; color: #fff; font-size: 64px; font-weight: 900; padding: 14px 30px; border-radius: 18px; transform: rotate(-2deg); }
   #outro .follow { font-size: 40px; font-weight: 800; text-shadow: 0 3px 12px rgba(0,0,0,.6); }
 </style>
 </head>
@@ -67,19 +68,20 @@
   <div id="studio" class="layer"><div class="hostbox" id="hostMain"></div><div id="sweep"></div><div class="vign"></div><div class="tshade"></div><div class="bshade"></div></div>
   <div id="pip"><div class="hostbox" id="hostPip"></div></div>
   <div id="top">
-    <div class="logo"><svg width="46" height="46" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg><span>TechTal<b>Q</b></span></div>
+    <div class="logo"><img id="logoTop" alt="TechTalQ"></div>
     <div class="live"><i id="dot"></i><span id="dateLabel"></span></div>
   </div>
   <div id="hook"><span class="tag" id="cat"></span><div class="t" id="teaser"></div></div>
   <div id="caps"><p id="capText"></p></div>
   <div id="ticker"><span class="lbl">ЖАҢАЛЫҚТАР</span><div class="run"><div id="tickText"></div></div></div>
-  <div id="outro" class="layer"><div class="cta"><div class="mark"><svg width="96" height="96" viewBox="0 0 64 64" fill="none"><circle cx="27" cy="27" r="20" stroke="#fff" stroke-width="9"/><circle cx="27" cy="27" r="4.2" fill="#00AFCA"/><path d="M39.5 39.5l15 15" stroke="#FFC72C" stroke-width="8" stroke-linecap="round"/></svg><span>TechTal<b>Q</b></span></div><span class="site">techtalq.kz</span><span class="follow">Жазылыңыз — @techtalq.kz</span></div></div>
+  <div id="outro" class="layer"><div class="cta"><div class="mark"><img id="logoOutro" alt="TechTalQ"></div><span class="site">techtalq.kz</span><span class="follow">Жазылыңыз — @techtalq.kz</span></div></div>
   <div id="flash"></div>
   <div id="wipe"></div>
 <script>
 /* Данные ролика подставляет render.py: window.REEL = {...} */
 const R = window.REEL;
 const $ = (id) => document.getElementById(id);
+$('logoTop').src = R.logoImage; $('logoOutro').src = R.logoImage;
 $('hostMain').innerHTML = `<img src="${R.hostImage}">` + R.hostSvg;
 $('hostPip').innerHTML = `<img src="${R.hostImage}">` + R.hostSvg.replace(/id="/g, 'id="p-').replace(/url\(#/g, 'url(#p-');
 $('photo').style.backgroundImage = `url(${R.photo})`;

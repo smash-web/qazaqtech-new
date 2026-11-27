@@ -236,6 +236,7 @@ def build_reel(*, title: str, category: str, teaser: str, date_label: str, photo
     return {
         "title": title, "category": category.upper(), "teaser": teaser, "dateLabel": date_label,
         "photo": data_url(photo), "photoCredit": photo_credit, "hostImage": data_url(HERE / "assets" / "host.jpg"),
+        "logoImage": data_url(HERE / "assets" / "logo-dark.png"),
         "hostSvg": host_svg(), "ticker": ticker or [], "broll": broll or [],
         "visemes": visemes(chars, st, en), "phrases": phrases(news_words, max_words=9, max_chars=52),
         "blinks": blinks(duration), "shots": shots,
