@@ -782,9 +782,19 @@ def kick_reel(cfg: Config, cms: CMSClient) -> dict:
     token = (s.get("githubToken") or "").strip()
     if not token:
         return {"skip": "no github token"}
-    r = requests.post(GH_DISPATCH, timeout=20, json={"ref": "main", "inputs": {"preview": False}},
-                      headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
-                               "User-Agent": cfg.user_agent})
+    hdr = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json", "User-Agent": cfg.user_agent}
+    # база шлёт запуск несколько раз подряд (запросы иногда теряются) — если сборка уже идёт или только что была, второй не нужен
+    try:
+        runs = requests.get(GH_DISPATCH.replace("/dispatches", "/runs"), timeout=20, headers=hdr,
+                            params={"per_page": 5}).json().get("workflow_runs") or []
+        now = datetime.now(timezone.utc)
+        for run in runs:
+            started = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+            if run.get("event") != "schedule" and (now - started).total_seconds() < 40 * 60:
+                return {"skip": f"already started {run['created_at']}"}
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        log.warning("Рилс: не удалось проверить запуски GitHub: %s", exc)
+    r = requests.post(GH_DISPATCH, timeout=20, json={"ref": "main", "inputs": {"preview": False}}, headers=hdr)
     if r.status_code >= 300:
         cms.update_reels_settings({"lastError": f"GitHub {r.status_code}: {r.text[:200]}"})
         return {"error": f"github {r.status_code}"}
