@@ -20,6 +20,14 @@ export const TikTokSettings: GlobalConfig = {
       fields: [
         { name: 'enabled', label: 'Отправлять черновики в TikTok', type: 'checkbox', defaultValue: false },
         {
+          name: 'mode', label: 'Что публиковать', type: 'select', defaultValue: 'manual', required: true,
+          options: [
+            { label: 'Только то, что выбрал редактор (кнопка в статье)', value: 'manual' },
+            { label: 'Автоматически — свежие новости по очереди', value: 'auto' },
+          ],
+          admin: { description: 'В статье справа есть кнопки «В Instagram» и «В TikTok». Выбранное уходит в течение 30 минут.' },
+        },
+        {
           name: 'dailyLimit', label: 'Черновиков в сутки, не больше', type: 'number', defaultValue: 5, min: 1, max: 15,
           admin: { description: 'Конвейер отправляет не чаще одного черновика в 30 минут.' },
         },

@@ -53,3 +53,17 @@
 .qt-ig__err { margin: 0 0 12px; color: #d93025; font-weight: 600; }
 .qt-ig__btn { display: inline-block; padding: 11px 18px; border-radius: 10px; background: #FFC72C; color: #0B1B3A !important; font-weight: 700; text-decoration: none; }
 .qt-ig__btn:hover { background: #F2B91C; }
+
+/* Кнопки «В Instagram» / «В TikTok» в статье */
+.qt-share { margin: 4px 0 22px; padding: 14px; border: 1px solid var(--theme-elevation-150); border-radius: 12px; }
+.qt-share__title { margin: 0 0 10px; font-weight: 700; }
+.qt-share__hint { margin: 0 0 10px; font-size: 13px; color: var(--theme-elevation-500); }
+.qt-share__row + .qt-share__row { margin-top: 10px; }
+.qt-share__btn { width: 100%; min-height: 42px; border: 1px solid #1881FF; border-radius: 10px; background: transparent; color: #1881FF; font: inherit; font-weight: 700; cursor: pointer; }
+.qt-share__btn:hover:not(:disabled) { background: #1881FF; color: #fff; }
+.qt-share__btn:disabled { opacity: .45; cursor: not-allowed; }
+.qt-share__state { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.qt-share__state.is-done { color: #1a9d55; }
+.qt-share__cancel { border: 0; background: none; color: var(--theme-elevation-500); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
+.qt-share__status { margin: 4px 0 0; font-size: 13px; color: var(--theme-elevation-600); overflow-wrap: anywhere; }
+.qt-share__status.is-error { color: #d23b3b; }

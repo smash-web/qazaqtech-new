@@ -165,5 +165,12 @@ class CMSClient:
     def update_reels_settings(self, data: dict) -> None:
         self._req("POST", "/globals/reels-settings", json=data)
 
+    def share_requests(self, field: str, limit: int = 20) -> list[dict]:
+        """Опубликованные статьи, которые редактор отправил в соцсеть кнопкой (поле *RequestedAt), старые первыми."""
+        data = self._req("GET", "/articles", params={
+            "where[status][equals]": "published", f"where[{field}][exists]": "true",
+            "sort": field, "limit": limit, "depth": 1})
+        return [a for a in data.get("docs", []) if a.get(field)]
+
     def article(self, article_id: int | str) -> dict:
         return self._req("GET", f"/articles/{article_id}", params={"depth": 1})

@@ -147,6 +147,38 @@ def image_url(article: dict, site_url: str) -> str:
     return f"{site_url}/ig/{article['slug']}?v={v}"
 
 
+def share_candidates(cms: CMSClient, db: Database, s: dict, network: str, field: str, now: datetime,
+                     max_attempts: int) -> list[dict]:
+    """Режим «manual» — только статьи, отмеченные редактором кнопкой; «auto» — свежие опубликованные по очереди.
+    В ручном режиме повторная заявка редактора (после ошибки) снимает ограничение попыток."""
+    out = []
+    if (s.get("mode") or "auto") == "manual":
+        for a in cms.share_requests(field):
+            rec = db.social_get(a["id"], network)
+            if rec and rec["status"] in ("posted", "posting"):
+                continue
+            requested = _parse(a.get(field))
+            if rec and rec["attempts"] >= max_attempts and not (requested and _parse(rec.get("updated_at")) and requested > _parse(rec["updated_at"])):
+                continue
+            out.append(a)
+        return out
+    since = now - timedelta(hours=int(s.get("lookbackHours") or 6))
+    for a in cms.published_since(since.isoformat()):
+        rec = db.social_get(a["id"], network)
+        if rec and (rec["status"] in ("posted", "posting") or rec["attempts"] >= max_attempts):
+            continue
+        out.append(a)
+    return out
+
+
+def mark_article(cms: CMSClient, article_id: Any, field: str, text: str) -> None:
+    """Итог публикации — в статью, редактор видит его рядом с кнопкой."""
+    try:
+        cms.update_article(article_id, {field: text[:300]})
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Не удалось записать статус в статью %s: %s", article_id, exc)
+
+
 def post_to_instagram(cfg: Config, db: Database, cms: CMSClient, client: InstagramClient | None = None,
                       now: datetime | None = None, wait_timeout: float = 60) -> dict:
     now = now or datetime.now(timezone.utc)
@@ -174,12 +206,9 @@ def post_to_instagram(cfg: Config, db: Database, cms: CMSClient, client: Instagr
         stats["skipped"] = "daily limit"
         return stats
 
-    since = now - timedelta(hours=int(s.get("lookbackHours") or 6))
-    for article in cms.published_since(since.isoformat()):
-        rec = db.social_get(article["id"], NETWORK)
-        # «posting» — публикация была начата, но не подтверждена: не повторяем, чтобы не выложить дважды
-        if rec and (rec["status"] in ("posted", "posting") or rec["attempts"] >= MAX_ATTEMPTS):
-            continue
+    manual = (s.get("mode") or "auto") == "manual"
+    # «posting» — публикация была начата, но не подтверждена: не повторяем, чтобы не выложить дважды
+    for article in share_candidates(cms, db, s, NETWORK, "instagramRequestedAt", now, MAX_ATTEMPTS):
         try:
             caption = build_caption(article, cfg.site_url, s.get("hashtags") or "")
             container = client.create_image(ig_id, token, image_url(article, cfg.site_url), caption)
@@ -190,6 +219,8 @@ def post_to_instagram(cfg: Config, db: Database, cms: CMSClient, client: Instagr
             db.social_save(article["id"], NETWORK, "posted", media_id=media_id, permalink=link)
             cms.update_instagram_settings({"lastPostAt": now.isoformat(), "lastError": ""})
             stats.update(posted=1, article=article["id"], permalink=link)
+            if manual:
+                mark_article(cms, article["id"], "instagramStatus", f"✓ Опубликовано {now:%d.%m %H:%M} UTC {link or ''}".strip())
         except InstagramError as exc:
             msg = str(exc)[:300]
             log.warning("Instagram: статья %s не опубликована: %s", article.get("id"), msg)
@@ -200,6 +231,8 @@ def post_to_instagram(cfg: Config, db: Database, cms: CMSClient, client: Instagr
             except Exception:  # noqa: BLE001
                 pass
             stats.update(failed=1, error=msg)
+            if manual:
+                mark_article(cms, article["id"], "instagramStatus", f"✕ Ошибка: {note}")
         break  # не больше одного поста за запуск
     db.log_run("social", stats)
     return stats

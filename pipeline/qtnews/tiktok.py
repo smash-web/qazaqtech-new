@@ -16,7 +16,7 @@ import requests
 from .cms import CMSClient
 from .config import Config
 from .db import Database
-from .social import _parse, build_caption, image_url
+from .social import mark_article, share_candidates, _parse, build_caption, image_url
 
 log = logging.getLogger(__name__)
 
@@ -118,11 +118,8 @@ def post_to_tiktok(cfg: Config, db: Database, cms: CMSClient, client: TikTokClie
         stats["skipped"] = "daily limit"
         return stats
 
-    since = now - timedelta(hours=int(s.get("lookbackHours") or 6))
-    for article in cms.published_since(since.isoformat()):
-        rec = db.social_get(article["id"], NETWORK)
-        if rec and (rec["status"] in ("posted", "posting") or rec["attempts"] >= MAX_ATTEMPTS):
-            continue
+    manual = (s.get("mode") or "auto") == "manual"
+    for article in share_candidates(cms, db, s, NETWORK, "tiktokRequestedAt", now, MAX_ATTEMPTS):
         try:
             db.social_save(article["id"], NETWORK, "posting", attempt=True)
             publish_id = client.upload_photo_draft(
@@ -131,6 +128,9 @@ def post_to_tiktok(cfg: Config, db: Database, cms: CMSClient, client: TikTokClie
             db.social_save(article["id"], NETWORK, "posted", media_id=publish_id)
             cms.update_tiktok_settings({"lastPostAt": now.isoformat(), "lastError": ""})
             stats.update(sent=1, article=article["id"], publish_id=publish_id)
+            if manual:
+                mark_article(cms, article["id"], "tiktokStatus",
+                             f"✓ Черновик в TikTok {now:%d.%m %H:%M} UTC — откройте приложение TikTok → Входящие и опубликуйте")
         except TikTokError as exc:
             msg = str(exc)[:300]
             log.warning("TikTok: статья %s не отправлена: %s", article.get("id"), msg)
@@ -140,6 +140,8 @@ def post_to_tiktok(cfg: Config, db: Database, cms: CMSClient, client: TikTokClie
             except Exception:  # noqa: BLE001
                 pass
             stats.update(failed=1, error=msg)
+            if manual:
+                mark_article(cms, article["id"], "tiktokStatus", f"✕ Ошибка: {msg}")
         break  # не больше одного черновика за запуск
     db.log_run("tiktok", stats)
     return stats

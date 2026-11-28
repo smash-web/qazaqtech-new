@@ -112,6 +112,16 @@ export const Articles: CollectionConfig = {
       type: 'ui',
       admin: { position: 'sidebar', components: { Field: '/components/admin/PublishButton#PublishButton' } },
     },
+    {
+      name: 'socialShare',
+      type: 'ui',
+      admin: { position: 'sidebar', components: { Field: '/components/admin/SocialShare#SocialShare' } },
+    },
+    // заявка редактора на пост в соцсети и итог от конвейера (показываются в блоке выше)
+    { name: 'instagramRequestedAt', type: 'date', admin: { hidden: true } },
+    { name: 'instagramStatus', type: 'text', admin: { hidden: true } },
+    { name: 'tiktokRequestedAt', type: 'date', admin: { hidden: true } },
+    { name: 'tiktokStatus', type: 'text', admin: { hidden: true } },
     { name: 'category', label: 'Рубрика', type: 'relationship', relationTo: 'categories', index: true, admin: { position: 'sidebar' } },
     {
       name: 'status',

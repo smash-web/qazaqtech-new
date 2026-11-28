@@ -20,6 +20,14 @@ export const InstagramSettings: GlobalConfig = {
       fields: [
         { name: 'enabled', label: 'Публиковать в Instagram', type: 'checkbox', defaultValue: false },
         {
+          name: 'mode', label: 'Что публиковать', type: 'select', defaultValue: 'manual', required: true,
+          options: [
+            { label: 'Только то, что выбрал редактор (кнопка в статье)', value: 'manual' },
+            { label: 'Автоматически — свежие новости по очереди', value: 'auto' },
+          ],
+          admin: { description: 'В статье справа есть кнопки «В Instagram» и «В TikTok». Выбранное уходит в течение 30 минут.' },
+        },
+        {
           name: 'dailyLimit', label: 'Постов в сутки, не больше', type: 'number', defaultValue: 20, min: 1, max: 90,
           admin: { description: 'Instagram разрешает до 100 постов через API в сутки. Конвейер выкладывает не чаще одного поста в 30 минут.' },
         },

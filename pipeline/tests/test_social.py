@@ -127,3 +127,21 @@ def test_never_expiring_token_has_no_warning(db):
     cms = FakeCMS(settings(tokenExpiresAt=None), [art(1)])
     stats = post_to_instagram(Config(), db, cms, FakeIG(), now=NOW)
     assert "token_expires" not in stats
+
+
+def test_manual_mode_posts_only_editor_requests():
+    from datetime import datetime, timezone
+    from qtnews.social import share_candidates
+
+    class CMS:
+        def share_requests(self, field):
+            return [{"id": 7, field: "2026-11-28T10:00:00Z"}, {"id": 8, field: "2026-11-28T10:05:00Z"}]
+        def published_since(self, since):
+            raise AssertionError("в ручном режиме автоочередь не используется")
+
+    class DB:
+        def social_get(self, aid, net):
+            return {"status": "posted", "attempts": 1, "updated_at": "2026-11-28T10:10:00Z"} if aid == 7 else None
+    got = share_candidates(CMS(), DB(), {"mode": "manual"}, "instagram", "instagramRequestedAt",
+                           datetime(2026, 11, 28, 11, tzinfo=timezone.utc), 2)
+    assert [a["id"] for a in got] == [8]
